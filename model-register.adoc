@@ -1,0 +1,665 @@
+# LutaML -- Model Register
+:doctype: standard
+:status: draft
+:language: en
+:script: Latn
+:title: LutaML -- Model Register
+:docnumber: LTM-003
+:keywords: lutaml, model register, model transformation, dynamic attributes
+
+== Scope
+
+This document specifies the model register capabilities in LutaML Model, which enable:
+
+* Dynamic model attribute modification
+* Model hierarchy manipulation
+* Cross-model attribute type substitution
+
+== Normative references
+
+* LutaML Model Framework
+* LutaML Path Specification
+
+== Terms and definitions
+
+=== model register
+
+registry that maintains and manages dynamic model configurations
+
+=== model path
+
+path expression that identifies a specific model or attribute within a model hierarchy
+
+=== model hierarchy
+
+tree structure that represents the relationships between different models and their attributes
+
+=== attribute substitution
+
+process of replacing one attribute type with another within a model
+
+=== model tree
+
+collection of interconnected models that form a hierarchical structure
+
+== Principles of model registers
+
+=== General
+
+A LutaML model register provides a way to dynamically modify and reconfigure model
+hierarchies without changing the original model definitions.
+
+Common use cases include:
+
+* Replacing attribute types in models
+* Swapping model subtrees with alternative implementations
+* Adding or removing attributes from models
+* Converting between different model namespaces
+
+=== Architecture
+
+A model register acts as a dynamic configuration layer that sits above the static
+model definitions:
+
+[source]
+----
+╔═══════════════════════╗   ╔══════════════════════╗
+║    Model Register     ║   ║  Model Definitions   ║
+╚═══════════════════════╝   ╚══════════════════════╝
+     │                            │
+     │                    ┌───────┴───────┐
+     │                    │               │
+     │               Model Tree A    Model Tree B
+     │                    │               │
+     │              ┌────┴────┐     ┌────┴────┐
+     │              │         │     │         │
+     └──────────►ModelA   ModelB   ModelC   ModelD
+----
+
+.Subtree Swap
+[source]
+----
+Before:                        After:
+  ModelA                        ModelA
+   ├─ModelB                     ├─ModelB
+   │  └─ModelC                 │  └─NewSubtree
+   └─ModelD                    └─ModelD
+----
+
+.Single Model Swap
+[source]
+----
+Before:                        After:
+  ModelA                        ModelA
+   ├─ModelB                     ├─NewModel
+   └─ModelC                     └─ModelC
+----
+
+.Global Type Substitution
+[source]
+----
+Before:                        After:
+  Document                      Document
+   ├─NameString                 ├─StructuredName
+   └─Author                     └─Author
+    └─NameString                └─StructuredName
+----
+
+=== Basic usage
+
+A model register is created and populated with model definitions:
+
+[source,ruby]
+----
+class StorageRecordCollection < Lutaml::ModelCollection
+  instances :items, StorageRecord
+end
+
+class StorageRecord
+  attribute :ceramic_info, GeneralCeramicInfo
+end
+
+class GeneralCeramicInfo < Lutaml::Model::Serializable
+  attribute :material, :string
+  attribute :production_date, :date
+end
+
+register = Lutaml::ModelRegister.new
+register.register_model_tree(StorageRecordCollection)
+----
+
+=== Model paths
+
+Model paths identify specific locations within a model hierarchy using the
+LutaML Path syntax.
+
+Common path patterns:
+
+* Single model: `ModelName`
+* Nested model: `ParentModel > ChildModel`
+* Model attribute: `Model.attribute`
+* Nested attribute: `ParentModel > ChildModel.attribute`
+
+[example]
+====
+Given this model hierarchy:
+
+[source,ruby]
+----
+class Publication
+  attribute :metadata, Metadata
+end
+
+class Book < Publication
+  attribute :chapters, Chapter, collection: true
+end
+
+class Metadata
+  attribute :title, :string
+  attribute :date, :date
+end
+----
+
+Valid model paths include:
+
+* `Publication` - References the Publication model
+* `Publication > Book` - References Book as a child of Publication
+* `Publication.metadata` - References the metadata attribute
+* `Publication > Book.chapters` - References the chapters collection
+====
+
+== Model registration
+
+=== General
+
+Models must be registered before they can be dynamically modified.
+
+=== Registration methods
+
+==== Register individual model
+
+Registers a single model class.
+
+Syntax:
+
+[source,ruby]
+----
+register.register_model(ModelClass)
+----
+
+[example]
+====
+[source,ruby]
+----
+register.register_model(StorageRecord)
+----
+====
+
+==== Register model tree
+
+Registers a model and all its dependent models.
+
+Syntax:
+
+[source,ruby]
+----
+register.register_model_tree(RootModelClass)
+----
+
+[example]
+====
+[source,ruby]
+----
+register.register_model_tree(StorageRecordCollection)
+# Automatically registers:
+# - StorageRecordCollection
+# - StorageRecord
+# - GeneralCeramicInfo
+----
+====
+
+== Dynamic modifications
+
+=== Attribute type substitution
+
+==== General
+
+Replace an attribute's type with another model type.
+
+==== Single attribute substitution
+
+Replaces a specific attribute instance's type.
+
+Syntax:
+
+[source,ruby]
+----
+register.register_dynamic_attribute(
+  model_path: "Model > SubModel.attribute",
+  attribute: :attribute_name,
+  type: NewAttributeType
+)
+----
+
+[example]
+====
+[source,ruby]
+----
+class VaseCeramicInfo < GeneralCeramicInfo
+  attribute :height, :float
+  attribute :diameter, :float
+end
+
+register.register_dynamic_attribute(
+  model_path: "StorageRecordCollection > StorageRecord",
+  attribute: :ceramic_info,
+  type: VaseCeramicInfo
+)
+----
+====
+
+==== Global type substitution
+
+Replaces all instances of a type throughout the model hierarchy.
+
+Syntax:
+
+[source,ruby]
+----
+register.register_global_type_substitution(
+  from_type: OldType,
+  to_type: NewType
+)
+----
+
+[example]
+====
+[source,ruby]
+----
+# Replace all Mml::Mi instances with Plurimath equivalents
+register.register_global_type_substitution(
+  from_type: Mml::Mi,
+  to_type: Plurimath::Math::Symbols::Symbol
+)
+----
+====
+
+=== Model tree operations
+
+==== Subtree replacement
+
+Replaces an entire subtree in the model hierarchy.
+
+Syntax:
+
+[source,ruby]
+----
+register.replace_subtree(
+  model_path: "Path > To > Subtree",
+  new_subtree: NewRootModel
+)
+----
+
+[example]
+====
+[source,ruby]
+----
+class NewMetadataTree < Lutaml::Model::Serializable
+  attribute :title, :string
+  attribute :description, :string
+end
+
+register.replace_subtree(
+  model_path: "Document > Metadata",
+  new_subtree: NewMetadataTree
+)
+----
+====
+
+==== Attribute modification
+
+Add or remove attributes from a model.
+
+Syntax:
+
+[source,ruby]
+----
+# Add attribute
+register.add_attribute(
+  model_path: "Model",
+  attribute: :new_attribute,
+  type: AttributeType
+)
+
+# Remove attribute
+register.remove_attribute(
+  model_path: "Model",
+  attribute: :old_attribute
+)
+----
+
+[example]
+====
+[source,ruby]
+----
+register.add_attribute(
+  model_path: "StorageRecord",
+  attribute: :last_modified,
+  type: :datetime
+)
+
+register.remove_attribute(
+  model_path: "StorageRecord",
+  attribute: :deprecated_field
+)
+----
+====
+
+=== Model resolution
+
+==== General
+
+After configuration, models are retrieved from the register using the resolve
+method.
+
+==== Basic resolution
+
+Retrieves a configured model class by name.
+
+Syntax:
+
+[source,ruby]
+----
+ModelClass = register.resolve("ModelName")
+----
+
+[example]
+====
+[source,ruby]
+----
+StorageRecordClass = register.resolve("StorageRecord")
+record = StorageRecordClass.new(
+  ceramic_info: VaseCeramicInfo.new(
+    material: "clay",
+    height: 10.0
+  )
+)
+----
+====
+
+==== Path-based resolution
+
+Retrieves a model class using a model path.
+
+Syntax:
+
+[source,ruby]
+----
+ModelClass = register.resolve_path("Path > To > Model")
+----
+
+[example]
+====
+[source,ruby]
+----
+VaseRecord = register.resolve_path(
+  "StorageRecordCollection > StorageRecord"
+)
+----
+====
+
+== Example scenarios
+
+=== Namespace conversion
+
+This example demonstrates converting models between different namespaces.
+
+[source,ruby]
+----
+# Original MathML models
+module Mml
+  class Expression < Lutaml::Model::Serializable
+    attribute :operator, Mi
+  end
+
+  class Mi < Lutaml::Model::Serializable
+    attribute :value, :string
+  end
+end
+
+# Target Plurimath models
+module Plurimath
+  module Math
+    module Symbols
+      class Symbol < Lutaml::Model::Serializable
+        attribute :value, :string
+      end
+    end
+  end
+end
+
+# Register and configure conversion
+register = Lutaml::ModelRegister.new
+register.register_model_tree(Mml::Expression)
+
+register.register_global_type_substitution(
+  from_type: Mml::Mi,
+  to_type: Plurimath::Math::Symbols::Symbol
+)
+
+# Use converted models
+ExpressionClass = register.resolve("Mml::Expression")
+expression = ExpressionClass.new(
+  operator: Plurimath::Math::Symbols::Symbol.new(
+    value: "+"
+  )
+)
+----
+
+=== Dynamic model extension
+
+This example shows extending models with new attributes.
+
+[source,ruby]
+----
+class BaseDocument < Lutaml::Model::Serializable
+  attribute :title, :string
+end
+
+class Chapter < Lutaml::Model::Serializable
+  attribute :content, :string
+end
+
+register = Lutaml::ModelRegister.new
+register.register_model_tree(BaseDocument)
+
+# Add versioning attributes
+register.add_attribute(
+  model_path: "BaseDocument",
+  attribute: :version,
+  type: :string
+)
+
+register.add_attribute(
+  model_path: "Chapter",
+  attribute: :last_modified,
+  type: :datetime
+)
+
+# Use extended models
+DocumentClass = register.resolve("BaseDocument")
+doc = DocumentClass.new(
+  title: "Example",
+  version: "1.0"
+)
+----
+
+[appendix]
+== Tutorial: Building an adaptive document model
+
+This tutorial demonstrates using model registers to create an adaptive document
+model system that can be customized for different use cases.
+
+=== Step 1: Base document model
+
+.Learning outcomes
+* Create initial model hierarchy
+* Register models
+* Understand basic model relationships
+
+[source,ruby]
+----
+# Define base models
+class Document < Lutaml::Model::Serializable
+  attribute :metadata, Metadata
+  attribute :content, Content
+end
+
+class Metadata < Lutaml::Model::Serializable
+  attribute :title, :string
+  attribute :author, :string
+  attribute :date, :date
+end
+
+class Content < Lutaml::Model::Serializable
+  attribute :sections, Section, collection: true
+end
+
+class Section < Lutaml::Model::Serializable
+  attribute :title, :string
+  attribute :body, :string
+end
+
+# Create and populate register
+register = Lutaml::ModelRegister.new
+register.register_model_tree(Document)
+----
+
+=== Step 2: Technical documentation extension
+
+.Learning outcomes
+* Extend models with new attributes
+* Replace attribute types
+* Use path-based modifications
+
+[source,ruby]
+----
+# Define technical documentation models
+class TechnicalMetadata < Metadata
+  attribute :version, :string
+  attribute :status, :string
+end
+
+class CodeSection < Section
+  attribute :language, :string
+  attribute :code, :string
+end
+
+# Configure register
+register.register_dynamic_attribute(
+  model_path: "Document",
+  attribute: :metadata,
+  type: TechnicalMetadata
+)
+
+register.add_attribute(
+  model_path: "Document > Content > Section",
+  attribute: :type,
+  type: :string
+)
+
+# Allow code sections
+register.register_dynamic_attribute(
+  model_path: "Document > Content",
+  attribute: :sections,
+  type: CodeSection
+)
+----
+
+=== Step 3: Academic publication extension
+
+.Learning outcomes
+* Replace model subtrees
+* Add nested attributes
+* Handle collections
+
+[source,ruby]
+----
+# Define academic models
+class AcademicMetadata < Metadata
+  attribute :abstract, :string
+  attribute :keywords, :string, collection: true
+  attribute :references, Reference, collection: true
+end
+
+class Reference < Lutaml::Model::Serializable
+  attribute :authors, :string, collection: true
+  attribute :title, :string
+  attribute :journal, :string
+  attribute :year, :integer
+end
+
+# Configure register
+register.replace_subtree(
+  model_path: "Document > Metadata",
+  new_subtree: AcademicMetadata
+)
+
+# Add citation support
+register.add_attribute(
+  model_path: "Document > Content > Section",
+  attribute: :citations,
+  type: Reference,
+  collection: true
+)
+----
+
+=== Step 4: Global modifications
+
+.Learning outcomes
+* Apply global type substitutions
+* Manage cross-cutting concerns
+* Handle model relationships
+
+[source,ruby]
+----
+# Define enhanced types
+class EnhancedString < Lutaml::Model::Serializable
+  attribute :value, :string
+  attribute :language, :string
+  attribute :format, :string
+end
+
+# Replace all string attributes with enhanced strings
+register.register_global_type_substitution(
+  from_type: :string,
+  to_type: EnhancedString
+)
+
+# Add tracking to all models
+register.add_attribute(
+  model_path: "*",
+  attribute: :created_at,
+  type: :datetime
+)
+
+register.add_attribute(
+  model_path: "*",
+  attribute: :updated_at,
+  type: :datetime
+)
+----
+
+=== Summary
+
+This tutorial demonstrated:
+
+* Basic model registration and configuration
+* Dynamic attribute type substitution
+* Model subtree replacement
+* Global type modifications
+* Cross-cutting attribute addition
+
+The progression shows how model registers enable flexible and maintainable
+model configurations that can adapt to different requirements while maintaining
+model consistency.
