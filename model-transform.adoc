@@ -1,0 +1,1651 @@
+= LutaML -- Model transformations
+:doctype: standard
+:status: draft
+:language: en
+:script: Latn
+:title: LutaML -- Model transformations
+:docnumber: LTM-001
+:keywords: lutaml, model transformation, data mapping
+
+== Scope
+
+This document specifies the transformation capabilities in LutaML Model, which
+enable mapping between different model representations while maintaining data
+integrity and structure.
+
+It defines:
+
+* Value transformation interfaces
+* Model transformation patterns
+* Nested transformation rules
+* Bidirectional transformation capabilities
+
+== Normative references
+
+* LutaML Model Framework
+
+== Terms and definitions
+
+=== transform
+
+operation that defines mapping rules between different model representations
+
+=== value transform
+
+{{transform}} that operates on individual attribute values
+
+=== model transform
+
+{{transform}} that operates on entire model structures
+
+=== source model
+
+model instance containing the original data to be transformed
+
+=== target model
+
+model instance that will receive the transformed data
+
+== Principles in transformations
+
+=== General
+
+A LutaML model defines the internal information organization structure
+of an information model.
+
+In order to allow external users to interact with the model, it is necessary to
+provide a way to transform the defined model into other models:
+
+* Serialization models that represent the model in a specific serialization
+format. e.g. JSON, XML, YAML.
+
+* Other LutaML models that represent information differently.
+
+* Information models in another modelling language that represent information
+differently.
+
+NOTE: The "transform" referred here is a mapping between a source LutaML model
+and a target LutaML model.
+
+
+=== Architecture
+
+In LutaML, a transform is a first-order object that defines:
+
+* source model
+* target model
+* mapping between the two models
+* any value transforms or processing logic
+
+A transform can be unidirectional or bidirectional.
+
+.Model transformation of a LutaML Model to another LutaML Model
+[source]
+----
+╔═══════════════════════╗   ╔══════════════════╗   ╔═══════════════════════╗
+║LutaML Model Class FOO ║   ║LutaML Transformer║   ║LutaML Model Class BAR ║
+╚═══════════════════════╝   ╚══════════════════╝   ╚═══════════════════════╝
+
+╭┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╮                          ╭┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╮
+┆          Model        ┆                          ┆          Model        ┆
+┆            │          ┆    ┌────────────────┐    ┆            │          ┆
+┆   ┌────────┴──┐       ┆    │                │    ┆   ┌────────┴──┐       ┆
+┆   │           │       ┆    │     Model      │    ┆   │           │       ┆
+┆ Models   Value Types  ┆───►│ Transformation │───►┆ Models   Value Types  ┆
+┆   │           │       ┆◄───│       &        │◄───┆   │           │       ┆
+┆   │           │       ┆    │ Mapping Rules  │    ┆   │           │       ┆
+┆   │    ┌──────┴──┐    ┆    │                │    ┆   │    ┌──────┴──┐    ┆
+┆   │    │         │    ┆    └────────────────┘    ┆   │    │         │    ┆
+┆   │   String  Integer ┆                          ┆   │   String  Integer ┆
+┆   │   Date    Float   ┆                          ┆   │   Date    Float   ┆
+┆   │   Time    Boolean ┆                          ┆   │   Time    Boolean ┆
+┆   │                   ┆                          ┆   │                   ┆
+┆   └──────┐            ┆                          ┆   └──────┐            ┆
+┆          │            ┆                          ┆          │            ┆
+┆     Contains          ┆                          ┆     Contains          ┆
+┆     more Models       ┆                          ┆     more Models       ┆
+┆     (recursive)       ┆                          ┆     (recursive)       ┆
+┆                       ┆                          ┆                       ┆
+╰┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╯                          ╰┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╯
+----
+
+
+
+=== Model and value transforms
+
+A value transform is a transformation that operates on individual attribute values,
+converting from one type or format to another.
+
+Common cases include:
+
+* Converting between different data types (e.g., string to date)
+* Splitting or combining values
+
+[example]
+====
+Transforming:
+
+* source: a string date "2025-03-15"
+* target: a LutaML Value type "Date".
+====
+
+
+A model transform operates on entire model structures, allowing for comprehensive mapping
+of various attributes and relations within the model.
+
+Common cases include:
+
+* Converting between different model representations
+* Handling nested object transformations
+* Processing collections
+
+[example]
+====
+Transforming:
+
+* source: a model with attributes `title`, `author`, `publication_date`
+* target: a model with attributes `name`, `creator`, `date`, which correspond to
+the source model attributes.
+====
+
+A source or target model here could also be a value type. For instance,
+extracting structured information (a model) from a string (a value type).
+
+[example]
+====
+Transforming:
+
+* source: a string set of names `"Gottlieb;von;Peter;Arnold"`
+* target: a structured name model that contains given names
+(`["Peter", "Arnold"]`), conjunction (`"von"`) and last name (`"Gottlieb"`).
+====
+
+
+
+=== Directionality
+
+A transform can operate in one or both directions.
+
+A unidirectional transform is a transformation that operates in one direction only,
+and cannot be reversed.
+
+A bidirectional transform is a transformation that operates in both directions,
+allowing for reversible transformations.
+
+
+=== Common use cases
+
+==== Between model representations
+
+This use case is demonstrated by the Plurimath gem's handling of MathML conversion
+(https://github.com/plurimath/plurimath#304[plurimath/plurimath#304]).
+
+In Plurimath:
+
+* Plurimath maintains an internal math model (the `Formula` class) for
+mathematical semantics
+
+* The mml gem models the MathML language specification, and provides MathML XML
+serialization
+
+When a MathML XML document is loaded, it is transformed into a `Plurimath::Formula`
+model instance in these steps:
+
+. MathML XML => The `Mml` LutaML model within the `mml` gem
+. The `Mml` LutaML model => The `Plurimath::Formula` LutaML model
+
+This architecture means Plurimath::Math does not directly handle serialization,
+but can transform into the `Mml` model when serialization is needed.
+
+When a MathML XML document is saved, the process is reversed: 
+
+. The `Plurimath::Formula` LutaML model => The `Mml` LutaML model
+. The `Mml` LutaML model within the `mml` gem => MathML XML
+
+
+==== Between serialization models
+
+A common requirement is the need to handle multiple serialization formats for the
+same data model. 
+
+The https://github.com/metanorma/modspec-ruby[`modspec` gem] provides a LutaML
+model for the OGC Modular Specification (ModSpec) requirements model, and supports
+XML and YAML serialization outputs (the "Native ModSpec XML/YAML format").
+
+The https://github.com/metanorma/mn-requirements[`mn-requirements` gem] needs to
+provide a Metanorma Requirements XML serialization format for the identical
+ModSpec model (the "Metanorma Requirements XML format").
+
+In encoding Metanorma Requirements in ModSpec, the user supplies Native ModSpec YAML
+which is meant to be transformed into Metanorma Requirements XML.
+
+The transformation process is:
+
+. ModSpec YAML => ModSpec LutaML model
+. ModSpec LutaML model => Metanorma Requirements LutaML model
+. Metanorma Requirements LutaML model => Metanorma Requirements XML (the "Native Metanorma Requirements XML format")
+
+In reverse, when the user wants to extract ModSpec YAML from Metanorma
+Requirements XML:
+
+. Metanorma Requirements XML => Metanorma Requirements LutaML model
+. Metanorma Requirements LutaML model => ModSpec LutaML model
+. ModSpec LutaML model => ModSpec YAML
+
+==== Between versioned models
+
+A common use case involves transforming between different versions of the same model
+as it evolves over time.
+
+The https://github.com/relaton/relaton[Relaton] LutaML model demonstrates this
+pattern:
+
+* Model version information is stored in the `schema-version` attribute of
+serialized formats of Relaton.
+
+* When an older version of the Relaton serialization is parsed, it is first interpreted
+by the appropriate version of the Relaton serialization LutaML model, and then
+transformed into the latest version of the Relaton data model.
+
+* A version-to-version transform handles model changes
+
+[example]
+====
+Relaton XML/YAML version attributes:
+
+[source,xml]
+----
+<bibdata type="standard" schema-version="1.2.9">
+  ...
+  <ext schema-version="1.0.3">
+    ...
+  </ext>
+</bibdata>
+----
+
+[source,yaml]
+----
+id: ISO1231994
+type: standard
+schema_version: 1.2.9
+...
+ext:
+  schema_version: 1.0.3
+  ...
+----
+====
+
+For transformations across multiple versions, transformations must be applied
+sequentially in historical order (e.g., "1.0.1" -> "1.0.2" -> "1.0.3").
+
+
+
+=== Model transformation patterns
+
+==== General
+
+There are several common model transformation patterns:
+
+* Generic-to-specific transformation
+* Specific-to-generic transformation
+* Many-to-many transformation
+
+==== Re-mapping attributes
+
+When transforming between models, it is common to re-map attributes between
+different models without changing value types.
+
+[example]
+====
+Converting a "title" attribute in a "Publication" model to a "name" attribute in a
+"CatalogEntry" model.
+====
+
+==== Generic-to-specific transformation
+
+Transforms a general model into a more specific one.
+
+[example]
+====
+Converting a general "car" model into a specialized "taxi" model.
+====
+
+==== Specific-to-generic transformation
+
+Transforms a specific model into a more general one.
+
+[example]
+====
+Converting a specialized "taxi" model into a general "car" model.
+====
+
+==== Many-to-many transformation
+
+Transforms a model that can be represented in multiple ways.
+
+[example]
+====
+An amphibious vehicle model that can transform into both "car" and "boat" models.
+====
+
+
+=== Directionality
+
+==== General
+
+Transforms can be configured to operate in one or both directions.
+
+The reversibility of a transform depends on two things:
+
+* whether any mapping rules are one-way transforms
+* whether the `reverse_transform do` block is defined
+
+==== Simple transforms (bidirectional)
+
+When a transform is defined with only a `transform do` block that contains
+bidirectional mapping rules, the transform is bidirectional.
+
+[source,ruby]
+----
+class SimpleBidirectionalTransform < Lutaml::Model::Transform
+  source_model :source_model
+  target_model :target_model
+    
+  transform do
+    # mapping without value transform logic
+  end
+end
+----
+
+==== Single direction transform
+
+When a transform is defined with only a `transform do` block that contains
+unidirectional mapping rules, the transform is unidirectional.
+
+[source,ruby]
+----
+class UnidirectionalTransform < Lutaml::Model::Transform
+  source_model :source_model
+  target_model :target_model
+  
+  transform do
+    # mapping with value transform logic
+  end
+end
+----
+
+==== Explicit bidirectional transform
+
+When a transform is defined with a `transform do` block that contains
+unidirectional mapping rules, but also a `reverse_transform do` block that
+contains reverse unidirectional mapping rules, the transform is bidirectional.
+
+[source,ruby]
+----
+class ExplicitBidirectionalTransform < Lutaml::Model::Transform
+  source_model :source_model
+  target_model :target_model
+    
+  transform do
+    # mapping with value transform logic
+  end
+
+  reverse_transform do
+    # mapping with value transform logic
+  end
+end
+----
+
+
+== Value transforms
+
+=== General
+
+Value transforms operate on individual attribute values, converting from one
+type or format to another.
+
+=== Structure
+
+A value transform:
+
+* Inherits from `Lutaml::Value::Transform`
+* Defines source and target value types
+* Implements the `transform` method
+* Implement `reverse_transform` method if bidirectional
+
+Syntax:
+
+[source,ruby]
+----
+class ValueTransformClass < Lutaml::Value::Transform
+  source_value :source_type <1>
+  target_value :target_type <2>
+
+  transform do |source_value|
+    # transformation logic
+  end
+
+  reverse_transform do |target_value|
+    # reverse transformation logic
+  end
+end
+----
+
+`source_value`::
+Specifies the source value type. This can be a primitive type or a class
+that inherits from `Lutaml::Value`.
+
+`target_value`::
+Specifies the target value type. This can be a primitive type or a class
+that inherits from `Lutaml::Value`.
+
+`transform`::
+Defines the transformation logic.
+
+`reverse_transform`::
+Defines the reverse transformation logic for bidirectional transforms.
+
+[example]
+====
+[source,ruby]
+----
+# Transforms a string into a Date model
+class DateFormatTransform < Lutaml::Value::Transform
+  source_value :string
+  target_value :date_with_time
+
+  transform do |source_value|
+    Date.parse(source_value)
+  end
+
+  reverse_transform do |target_value|
+    target_target_value.strftime('%Y-%m-%d')
+  end
+end
+----
+
+Given:
+
+[source,ruby]
+----
+DateFormatTransform.transform('2021-01-01')
+# => #<Date: 2021-01-01 ((2459216j,0s,0n),+0s,2299161j)>
+
+DateFormatTransform.reverse_transform(Date.new(2021, 1, 1))
+# => "2021-01-01"
+----
+====
+
+
+== Model transforms
+
+=== General
+
+Model transforms operate on entire model structures, mapping attributes between
+different model representations.
+
+=== Base requirements 
+
+A model transform:
+
+* Inherits from `Lutaml::Model::Transform`
+* Specifies source and target models
+* Defines mapping rules within a transform block
+* Declares directionality
+
+Syntax:
+
+[source,ruby]
+----
+class TransformClass < Lutaml::Model::Transform
+  source_model :source_model <1>
+  target_model :target_model <2>
+  
+  transform do
+    # mapping rules
+  end
+
+  reverse_transform do
+    # reverse mapping rules
+  end
+end
+----
+
+`source_model`::
+Specifies the source model class.
+
+`target_model`::
+Specifies the target model class.
+
+[example]
+====
+[source,ruby]
+----
+class PublicationTransform < Lutaml::Model::Transform
+  source_model Publication
+  target_model CatalogEntry
+
+  transform do
+    # mapping rules
+    map from: 'title', to: 'title'
+    map from: 'author', to: 'creator'
+  end
+
+  reverse_transform do
+    # reverse mapping rules
+    map from: 'target.title', to: 'source.title'
+    map from: 'target.creator', to: 'source.author'
+  end
+end
+----
+
+Given:
+
+[source,ruby]
+----
+publication = Publication.new(title: 'The Art of War', author: 'Sun Tzu')
+transformed = PublicationTransform.transform(publication)
+# => #<CatalogEntry:0x00007f9b1b8b3b10 @title="The Art of War", @creator="Sun Tzu">
+
+publication_transformed = PublicationTransform.reverse_transform(transformed)
+# => #<Publication
+#      @title="The Art of War",
+#      @author="Sun Tzu">
+----
+====
+
+=== Model mapping rules
+
+==== Direct attribute mapping
+
+Maps source attributes to target attributes with identical names without value
+modification.
+
+This type of mapping is bidirectional by default.
+
+Syntax:
+
+[source,ruby]
+----
+map from: 'path_from_source', to: 'path_at_target', directional: :bidirectional # default
+# or simply
+map from: 'path_from_source', to: 'path_at_target'
+----
+
+The `from:` and `to:` parameters are in the LutaML Path syntax.
+
+[example]
+====
+In LutaML Path syntax, given a source model of `{ name("John Doe"),
+email("john@example.com") }`, the path to the `name` attribute is `name`, and
+the path to the `email` attribute is `email`.
+====
+
+.Direct attribute mapping example
+[example]
+====
+[source,ruby]
+----
+class Publication < Lutaml::Model::Serializable
+  attribute :title, :string
+  attribute :author, :string
+end
+
+class CatalogEntry < Lutaml::Model::Serializable
+  attribute :title, :string
+  attribute :author, :string
+end
+
+class PublicationTransform < Lutaml::Model::Transform
+  source_model Publication
+  target_model CatalogEntry
+
+  transform do
+    map from: 'title', to: 'title'
+    map from: 'author', to: 'author'
+  end
+end
+----
+====
+
+==== Attribute renaming
+
+Maps source attributes to differently named target attributes.
+
+This type of mapping is bidirectional by default.
+
+Syntax:
+
+[source,ruby]
+----
+map from: 'old_name', to: 'new_name'
+----
+
+[example]
+====
+[source,ruby]
+----
+class Person < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :year_born, :string
+end
+
+class User < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :birth_year, :string
+end
+
+class UserTransform < Lutaml::Model::Transform
+  source_model Person
+  target_model User
+
+  transform do
+    map from: 'year_born', to: 'birth_year'
+  end
+end
+----
+====
+
+==== Value transformation mapping
+
+Maps source attributes to target attributes with value transformation.
+
+The directionality of a transformation mapping depends on the directionality of
+the value transform.
+
+Syntax:
+
+[source,ruby]
+----
+map from: 'attribute', to: 'attribute', transform: TransformClass
+----
+
+[example]
+====
+[source,ruby]
+----
+class Person < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :birth_date, :string
+end
+
+class User < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :birth_date, :date_with_time
+end
+
+# This is a uni-directional transform
+class DateFormatTransform < Lutaml::Value::Transform
+  source_value :string
+  target_value :date_with_time
+
+  transform do |source_value|
+    Date.parse(source_value)
+  end
+end
+
+class UserTransform < Lutaml::Model::Transform
+  source_model Person
+  target_model User
+
+  transform do
+    # This is a uni-directional mapping
+    map from: 'birth_date', to: 'birth_date', transform: DateFormatTransform
+  end
+end
+----
+====
+
+[example]
+====
+[source,ruby]
+----
+# This is a bidirectional transform
+class DateFormatTransform < Lutaml::Value::Transform
+  source_value :string
+  target_value :date_with_time
+
+  transform do |source_value|
+    Date.parse(source_value)
+  end
+
+  reverse_transform do |target_value|
+    target_target_value.strftime('%Y-%m-%d')
+  end
+end
+
+class UserTransform < Lutaml::Model::Transform
+  transform do
+    # This becomes a bidirectional mapping
+    map from: 'birth_date', to: 'birth_date', transform: DateFormatTransform
+  end
+end
+----
+====
+
+
+
+== Nested transforms
+
+=== General
+
+Nested transforms handle complex object hierarchies, allowing transformation of
+nested attributes and objects.
+
+=== Structure
+
+A nested transform:
+
+* Defines mappings for nested attributes using dot notation
+* Handles collections appropriately
+* Supports value transforms within nested mappings
+
+=== Nested attribute mapping
+
+Maps attributes within nested objects.
+
+The directionality of a nested mapping depends on the directionality of the
+transform.
+
+Syntax:
+
+[source,ruby]
+----
+map from: 'parent.child', to: 'parent.child'
+----
+
+[example]
+====
+[source,ruby]
+----
+class Organization < Lutaml::Model::Serializable
+  attribute :department, DepartmentInformation
+end
+
+class DepartmentInformation < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :code, :string
+end
+
+class OrganizationMetadata < Lutaml::Model::Serializable
+  attribute :department, DepartmentMetadata
+end
+
+class DepartmentMetadata < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :identifier, :string
+end
+
+class OrganizationTransform < Lutaml::Model::Transform
+  source_model Organization
+
+  # These are bi-directional mappings
+  transform do
+    map from: 'department.name', to: 'department.name'
+    map from: 'department.code', to: 'department.identifier'
+  end
+end
+----
+====
+
+
+
+== Collection transforms
+
+=== General
+
+Collection transforms handle mapping between collections of objects.
+
+=== Models to models
+
+The `map_each` command is used to specify that the source attribute is a collection.
+
+Syntax:
+
+[source,ruby]
+----
+map_each from: 'collection_path', to: 'attribute_or_collection_path', transform: CollectionTransform
+----
+
+[example]
+====
+[source,ruby]
+----
+class Publication < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :authors, Author, collection: true
+end
+
+class CatalogEntry < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :contributors, Contributor, collection: true
+end
+
+class Author < Lutaml::Model::Serializable
+  attribute :name, :string
+end
+
+class Contributor < Lutaml::Model::Serializable
+  attribute :name, :string
+end
+
+# This is a model to model transform
+class AuthorTransform < Lutaml::Model::Transform
+  source_model Author
+  target_model Contributor
+
+  transform do
+    map from: 'name', to: 'name'
+  end
+end
+
+class PublicationTransform < Lutaml::Model::Transform
+  source_model Publication
+  target_model CatalogEntry
+
+  transform do
+    map_each from: 'authors', to: 'contributors', transform: AuthorTransform
+  end
+end
+----
+====
+
+
+=== Splitting models into a collection
+
+Collection transforms can also split a single model into multiple entries in a
+collection. For instance, consider a transform that takes a publication's
+authors and converts them into a collection of contributors.
+
+The `target_model ..., collection: true` syntax is used to specify that the
+target attribute is a collection.
+
+Syntax:
+
+[source,ruby]
+----
+map_each from: 'attribute', to: 'collection_path', transform: CollectionTransform
+----
+
+[example]
+====
+[source,ruby]
+----
+class PublicationV1 < Lutaml::Model::Serializable
+  attribute :title, :string
+  attribute :contributor_information, :string
+end
+
+class PublicationV2 < Lutaml::Model::Serializable
+  attribute :title, :string
+  attribute :contributors, Contributor, collection: true
+end
+
+class Contributor < Luatml::Model::Serializable
+  attribute :name, :string
+end
+
+class ContributorTransform < Lutaml::Model::Transform
+  source_value :string
+  target_model Contributor, collection: true
+
+  transform do |source_value|
+    source_value.split(',').map do |name|
+      Contributor.new(name: name)
+    end
+  end
+end
+
+class PublicationTransform < Lutaml::Model::Transform
+  source_model PublicationV1
+  target_model PublicationV2
+
+  transform do
+    map from: 'contributor_information', to: 'contributors', transform: ContributorTransform
+  end
+end
+----
+====
+
+
+=== Joining a collection into an attribute
+
+Collection transforms can also join a collection of objects into a single
+attribute in the target model.
+
+Syntax:
+
+[source,ruby]
+----
+map_each from: 'collection_path', to: 'attribute', transform: CollectionTransform
+----
+
+[example]
+====
+[source,ruby]
+----
+class StandardsPublication < Lutaml::Model::Serializable
+  attribute :title, :string, collection: true
+end
+
+class BibliographyEntry < Lutaml::Model::Serializable
+  attribute :title, :string
+end
+
+class TitleAggregationTransform < Lutaml::Model::Transform
+  source_model :string, collection: true
+  target_model :string
+
+  transform do |source_values|
+    source_values.join(', ')
+  end
+end
+
+class StandardsPublicationTransform < Lutaml::Model::Transform
+  source_model StandardsPublication
+  target_model BibliographyEntry
+
+  transform do
+    map_each from: 'title', to: 'title', transform: TitleAggregationTransform
+  end
+end
+----
+====
+
+
+
+
+[appendix]
+== Tutorial: Complex transformation scenario
+
+This tutorial demonstrates a complete transformation scenario using a museum's
+art collection as an example.
+
+Consider the following model trees.
+
+The "De Lutam'l Art Museum" has a collection of ceramic pieces managed in a register
+used for generic art information.
+
+The register has the following fields:
+
+[source,ruby]
+----
+# First model tree
+class GenericArtInformation < Lutaml::Model::Serializable
+  attribute :title, :string
+  attribute :description, :string
+  attribute :artist, CreatorInformation
+  attribute :creation_date, :string
+  attribute :place_of_work, :string
+end
+
+class CreatorInformation < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :bio, :string
+  attribute :website, :string
+  attribute :year_born, :integer
+  attribute :year_died, :integer
+end
+----
+
+This is an example of a YAML file that represents the first model tree:
+
+.In the `GenericArtInformation` model
+[source,yaml]
+----
+---
+- title: "Translucent Vase"
+  description: |
+    A tall and beautiful translucent vase created in the celadon color.
+
+    Dimensions: 10x10x10 cm
+    Fire temperature: 1000°C
+    Clay type: Porcelain
+  artist:
+    name: "Masaaki Shibata"
+    bio: |
+      Masaaki Shibata is a Japanese ceramic artist.
+
+      Awards: Japan Ceramic Society Award, 2005.
+
+      Skills: Glazing, painting
+    website: "https://www.masaakishibata.com"
+    year_born: 1947
+    year_died: null
+  creation_date: "2010-01-01"
+  place_of_work: Tokyo, Japan
+- title: "Blue and White Bowl"
+  description: |
+    A blue and white bowl with a floral pattern.
+
+    Dimensions: 20x20x20 cm
+    Fire temperature: 1200°C
+    Clay type: Stoneware
+    Glaze: Blue and white
+  artist:
+    name: "Lucie Rie"
+    bio: |
+      Lucie Rie was an Austrian-born British studio potter.
+
+      Awards: Potter's Gold Medal, 1987.
+
+      Skills: Throwing, glazing
+    website: "https://www.lucierie.com"
+    year_born: 1902
+    year_died: 1995
+  creation_date: "1970-01-01"
+  place_of_work: London, UK
+- title: "Ceramic Sculpture"
+  description: |
+    A ceramic sculpture in form of a golden fish.
+
+    Dimensions: 30x10x20 cm
+    Fire temperature: 800°C
+    Clay type: Earthenware
+    Glaze: Gold
+  artist:
+    name: "Peter Voulkos"
+    bio: |
+      Peter Voulkos was an American artist of Greek descent.
+      
+      Awards: National Medal of Arts, 2001.
+
+      Skills: Throwing, hand-building, glazing
+
+    website: "https://www.petervoulkos.com"
+    year_born: 1924
+    year_died: 2002
+  creation_date: "1980-01-01"
+  place_of_work: Portopolous, Greece
+----
+
+The museum wants to transform the generic art information
+model into a ceramic art information model to better manage the ceramic pieces.
+
+[source,ruby]
+----
+# Second model tree
+class CeramicArtInformation < Lutaml::Model::Serializable
+  attribute :title, :string
+  attribute :description, :string
+  attribute :artist, CeramicCreatorInformation
+  attribute :creation_date, :date_with_time
+  attribute :location, :string
+  attribute :dimensions, Dimensions
+  attribute :fire_temperature, :integer
+  attribute :fire_temperature_unit, :string, values: %w[°C °F]
+  attribute :clay_type, :string
+  attribute :glaze, :string
+end
+
+class Dimensions < Lutaml::Model::Serializable
+  attribute :height, :integer
+  attribute :width, :integer
+  attribute :depth, :integer
+end
+
+class CeramicCreatorInformation < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :bio, :string
+  attribute :website, :string
+  attribute :year_of_birth, :integer
+  attribute :year_of_death, :integer
+  attribute :techniques, :string, collection: true
+  attribute :awards, :string, collection: true
+end
+----
+
+We need to create a `Lutaml::Model::Transform` class that will transform the
+first model tree into the second model tree.
+
+Let's first map the fields and group them according to the level of processing
+needed.
+
+NOTE: The "source" refes to the `GenericArtInformation` model, and the "target" refers to the `CeramicArtInformation` model.
+
+.No processing needed
+|===
+| Source attribute(s) | Target attribute(s) | Value processing needed
+
+| `title` | `title` | None
+| `description` | `description` | None
+
+|===
+
+.Attribute rename
+|===
+| Source attribute(s) | Target attribute(s) | Value processing needed
+
+| `place_of_work` | `location` | None
+|===
+
+.Value type conversion
+|===
+| Source attribute(s) | Target attribute(s) | Value processing needed
+| `creation_date` | `creation_date` | Convert string to date with time
+|===
+
+.Processing needed
+|===
+| Source attribute(s) | Target attribute(s) | Value processing needed
+| `fire_temperature` | `fire_temperature` | Extract from `description`
+| `fire_technique` | `fire_technique` | Extract from `description`
+| `clay_type` | `clay_type` | Extract from `description`
+| `glaze` | `glaze` | Extract from `description`
+| `dimensions` | `dimensions` | Extract specific values and map to Dimensions attributes
+
+|===
+
+.Nested attribute map
+|===
+| Source attribute(s) | Target attribute(s) | Value processing needed
+| `artist.name` | `artist.name` | None
+| `artist.bio` | `artist.bio` | None
+| `artist.website` | `artist.website` | None
+
+|===
+
+.Nested attribute rename
+|===
+| Source attribute(s) | Target attribute(s) | Value processing needed
+| `artist.year_born` | `artist.year_of_birth` | None
+| `artist.year_died` | `artist.year_of_death` | None
+
+|===
+
+.Nested attribute processing
+|===
+| Source attribute(s) | Target attribute(s) | Value processing needed
+| `artist.bio` | `artist.techniques` | Extract from artist bio
+| `artist.bio` | `artist.awards` | Extract from artist bio
+|===
+
+The following `Lutaml::Model::Transform` class will transform the first model tree into the second model tree.
+We build this class incrementally by adding the necessary mappings.
+
+Let's start with mapping the attributes that do not require any processing.
+
+[source,ruby]
+----
+class CeramicArtInformationTransform < Lutaml::Model::Transform
+  source_model GenericArtInformation
+  target_model CeramicArtInformation
+
+  transform do
+    # Simple mapping
+    map from: 'title', to: 'title'
+    map from: 'description', to: 'description'    
+  end
+end
+----
+
+Next, we add the mapping for the attributes that require renaming.
+
+[source,ruby]
+----
+class CeramicArtInformationTransform < Lutaml::Model::Transform
+  source_model GenericArtInformation
+  target_model CeramicArtInformation
+
+  transform do
+    # Simple mapping
+    map from: 'title', to: 'title'
+    map from: 'description', to: 'description'    
+
+    # Rename attributes
+    map from: 'place_of_work', to: 'location'
+  end
+end
+----
+
+Now let's add the mapping for the nested attributes.
+
+[source,ruby]
+----
+class CeramicArtInformationTransform < Lutaml::Model::Transform
+  source_model GenericArtInformation
+  target_model CeramicArtInformation
+
+  transform do
+    # Simple mapping
+    map from: 'title', to: 'title'
+    map from: 'description', to: 'description'    
+
+    # Rename attributes
+    map from: 'place_of_work', to: 'location'
+
+    # Nested attribute mapping
+    map from: 'artist.name', to: 'artist.name'
+    map from: 'artist.bio', to: 'artist.bio'
+    map from: 'artist.website', to: 'artist.website'
+
+    # Rename nested attributes
+    map from: 'artist.year_born', to: 'artist.year_of_birth'
+    map from: 'artist.year_died', to: 'artist.year_of_death'
+  end
+end
+----
+
+
+Next, we add the mapping for the attributes that require value type conversion.
+
+There are two ways we can specify a value transform.
+
+. By using a Lutaml::Value::Transform class that implements the `transform` and `reverse_transform` methods.
+
+. By using a block that takes the source value as an argument and returns the transformed value.
+
+In the first manner, we define the `DateFormatTransform` class that converts a string to a date with time.
+
+[source,ruby]
+----
+class DateFormatTransform < Lutaml::Value::Transform
+  source_value :string
+  target_value :date_with_time
+
+  transform do |source_value|
+    Date.parse(source_value)
+  end
+
+  reverse_transform do |target_value|
+    target_value.strftime('%Y-%m-%d')
+  end
+end
+----
+
+Then the mapping is added to the `CeramicArtInformationTransform` class like the following.
+
+[source,ruby]
+----
+# Value type conversion
+map from: 'creation_date', to: 'creation_date', transform: DateFormatTransform
+----
+
+In the second manner, we can use a block to specify the transformation.
+
+[source,ruby]
+----
+# Value type conversion
+map from: 'creation_date', to: 'creation_date',
+  transform: -> { |source_value|
+    Date.parse(source_value)
+  },
+  reverse_transform: -> { |target_value|
+    target_value.strftime('%Y-%m-%d')
+  }
+----
+
+The example follows that we follow the first manner.
+
+Next, we add the mapping for the attributes that require processing.
+
+[source,ruby]
+----
+class CeramicArtInformationTransform < Lutaml::Model::Transform
+  source_model GenericArtInformation
+  target_model CeramicArtInformation
+
+  transform do
+    # Simple mapping
+    map from: 'title', to: 'title'
+    map from: 'description', to: 'description'    
+
+    # Rename attributes
+    map from: 'place_of_work', to: 'location'
+
+    # Nested attribute mapping
+    map from: 'artist.name', to: 'artist.name'
+    map from: 'artist.bio', to: 'artist.bio'
+    map from: 'artist.website', to: 'artist.website'
+
+    # Rename nested attributes
+    map from: 'artist.year_born', to: 'artist.year_of_birth'
+    map from: 'artist.year_died', to: 'artist.year_of_death'
+
+    # Value type conversion
+    map from: 'creation_date', to: 'creation_date', transform: DateFormatTransform
+
+    # Single direction transform only, because the source information remains
+    # unchanged in a reverse migration.
+    map from: 'description', to: 'fire_temperature', transform: :extract_fire_temperature
+    map from: 'description', to: 'fire_temperature_unit', transform: :extract_fire_temperature_unit
+
+    # Extract the clay type from the description.
+    # e.g. "Clay type: Porcelain" => "Porcelain"
+    map from: 'description', to: 'clay_type', transform: -> { |description|
+      description.match(/Clay type: ([\w\s]+)/)[1]
+    }
+
+    # Extract the glaze from the description.
+    # e.g. "Glaze: Blue and white" => "Blue and white"
+    # Notice that the glaze is (optional), so we use a non-greedy match.
+    map from: 'description', to: 'glaze', transform: -> { |description|
+      description.match(/Glaze: (.+?)/)[1] rescue nil
+    }
+
+    # Use a separate method to extract dimensions from the description.
+    # Extract the fire temperature from the description.
+    map from: 'description', to: 'fire_temperature', transform: :extract_fire_temperature
+
+    # e.g. "Fire temperature: 1000°C" => 1000
+    # NOTE: Fire temperature might not be present.
+    def extract_fire_temperature(description)
+      description.match(/Fire temperature: (\d+)/)[1]&.to_i
+    end
+
+    # Use a separate method to extract dimensions from the description.
+    # Extract the temperature unit from the description.
+    map from: 'description', to: 'fire_temperature_unit', transform: :extract_fire_temperature_unit
+
+    # e.g. "Fire temperature: 1000°C" => "°C"
+    # NOTE: Fire temperature might not be present.
+    def extract_fire_temperature_unit(description)
+      description.match(/Fire temperature: \d+(°\w+)/)[1]&.to_s
+    end
+
+    # Nested attribute with extracted values
+    map from: 'artist.bio', to: 'artist.techniques', transform: :extract_techniques
+    map from: 'artist.bio', to: 'artist.awards', transform: :extract_awards
+
+    # Extract techniques from the bio text.
+    # e.g. "Technique: Pottery" => ["Pottery"]
+    def extract_techniques(bio)
+      bio.scan(/Technique: ([\w\s]+)/).flatten
+    end
+
+    # Extract awards from the bio text.
+    # e.g. "Award: Best in Show" => ["Best in Show"]
+    def extract_awards(bio)
+      bio.scan(/Award: ([\w\s]+)/).flatten
+    end
+  end
+end
+----
+
+Now we have to create a transformation for the Dimensions attribute.
+
+[source,ruby]
+----
+# Transforms a string into a Dimension model
+class DimensionsTransform < Lutaml::Model::Transform
+  source_value :string
+  target_model :dimensions
+
+  transform do |source_value|
+    height, width, depth = source_value.match(/Dimensions: (\d+)x(\d+)x(\d+)/).captures
+    target_model.new(
+      height: height.to_i,
+      width: width.to_i, 
+      depth: depth.to_i
+    )
+  end
+
+  reverse_transform do |target_model|
+    "#{target_model.height}x#{target_model.width}x#{target_model.depth}"
+  end
+end
+----
+
+Then we add the mapping to the `CeramicArtInformationTransform` class.
+
+[source,ruby]
+----
+# Extract dimensions from the description.
+map from: 'description', to: 'dimensions', transform: DimensionsTransform
+----
+
+Finally, we add the reverse transformation to the `CeramicArtInformationTransform` class.
+
+[source,ruby]
+----
+class CeramicArtInformationTransform < Lutaml::Model::Transform
+  source_model GenericArtInformation
+  target_model CeramicArtInformation
+
+  transform do
+    # Simple mapping
+    map from: 'title', to: 'title'
+    map from: 'description', to: 'description'    
+
+    # Rename attributes
+    map from: 'place_of_work', to: 'location'
+
+    # Nested attribute mapping
+    map from: 'artist.name', to: 'artist.name'
+    map from: 'artist.bio', to: 'artist.bio'
+    map from: 'artist.website', to: 'artist.website'
+
+    # Rename nested attributes
+    map from: 'artist.year_born', to: 'artist.year_of_birth'
+    map from: 'artist.year_died', to: 'artist.year_of_death'
+
+    # Value type conversion
+    map from: 'creation_date', to: 'creation_date', transform: DateFormatTransform
+
+    # Single direction transform only, because the source information remains
+    # unchanged in a reverse migration.
+    map from: 'description', to: 'fire_temperature', transform: :extract_fire_temperature
+    map from: 'description', to: 'fire_temperature_unit', transform: :extract_fire_temperature_unit
+
+    # Extract the clay type from the description.
+    # e.g. "Clay type: Porcelain" => "Porcelain"
+    map from: 'description', to: 'clay_type', transform: -> { |description|
+      description.match(/Clay type: ([\w\s]+)/)[1]
+    }
+
+    # Extract the glaze from the description.
+    # e.g. "Glaze: Blue and white" => "Blue and white"
+    # Notice that the glaze is (optional), so we use a non-greedy match.
+    map from: 'description', to: 'glaze', transform: -> { |description|
+      description.match(/Glaze: (.+?)/)[1] rescue nil
+    }
+
+    # Use a separate method to extract dimensions from the description.
+    # Extract the fire temperature from the description.
+    map from: 'description', to: 'fire_temperature', transform: :extract_fire_temperature
+
+    # e.g. "Fire temperature: 1000°C" => 1000
+    # NOTE: Fire temperature might not be present.
+    def extract_fire_temperature(description)
+      description.match(/Fire temperature: (\d+)/)[1]&.to_i
+    end
+
+    # Use a separate method to extract dimensions from the description.
+    # Extract the temperature unit from the description.
+    map from: 'description', to: 'fire_temperature_unit', transform: :extract_fire_temperature_unit
+
+    # e.g. "Fire temperature: 1000°C" => "°C"
+    # NOTE: Fire temperature might not be present.
+    def extract_fire_temperature_unit(description)
+      description.match(/Fire temperature: \d+(°\w+)/)[1]&.to_s
+    end
+
+    # Nested attribute with extracted values
+    map from: 'artist.bio', to: 'artist.techniques', transform: :extract_techniques
+    map from: 'artist.bio', to: 'artist.awards', transform: :extract_awards
+
+    # Extract techniques from the bio text.
+    # e.g. "Technique: Pottery" => ["Pottery"]
+    def extract_techniques(bio)
+      bio.scan(/Technique: ([\w\s]+)/).flatten
+    end
+
+    # Extract awards from the bio text.
+    # e.g. "Award: Best in Show" => ["Best in Show"]
+    def extract_awards(bio)
+      bio.scan(/Award: ([\w\s]+)/).flatten
+    end
+
+    # Extract dimensions from the description.
+    map from: 'description', to: 'dimensions', transform:
+    DimensionsTransform
+  end
+end
+
+# Transforms a string into a Dimension model
+class DimensionsTransform < Lutaml::Model::Transform
+  source_value :string
+  target_model Dimensions
+
+  transform do |source_value|
+    height, width, depth = source_value.match(/Dimensions: (\d+)x(\d+)x(\d+)/).captures
+    target_model.new(
+      height: height.to_i,
+      width: width.to_i, 
+      depth: depth.to_i
+    )
+  end
+
+  reverse_transform do |target_model|
+    "#{target_model.height}x#{target_model.width}x#{target_model.depth}"
+  end
+end
+
+# Transforms a string into a Date model
+class DateFormatTransform < Lutaml::Value::Transform
+  source_value :string
+  target_value :date_with_time
+
+  transform do |source_value|
+    Date.parse(source_value)
+  end
+
+  reverse_transform do |target_value|
+    target_value.strftime('%Y-%m-%d')
+  end
+end
+----
+
+The transformation is now complete.
+
+We can now use the `CeramicArtInformationTransform` class to transform the data
+from the first model tree to the second model tree.
+
+[source,ruby]
+----
+# Load the data from the YAML file
+data = YAML.load_file('generic_art_information.yaml')
+
+# Load the generic art information
+generic_art_info = GenericArtInformation.from_yaml(data)
+
+# Transform the data
+transformed_data = CeramicArtInformationTransform.transform(generic_art_info)
+
+transformed_data.first.class
+# => CeramicArtInformation
+
+# Save the transformed data to a YAML file
+File.write('ceramic_art_information.yaml', transformed_data.to_yaml)
+----
+
+The transformed data looks like this.
+
+.Data instances in the `CeramicArtInformation` model
+[source,yaml]
+----
+---
+- title: "Translucent Vase"
+  description: |
+    A tall and beautiful translucent vase created in the celadon color.
+
+    Dimensions: 10x10x10 cm
+    Fire temperature: 1000°C
+    Clay type: Porcelain
+  artist:
+    name: "Masaaki Shibata"
+    bio: |
+      Masaaki Shibata is a Japanese ceramic artist.
+
+      Awards: Japan Ceramic Society Award, 2005.
+
+      Skills: Glazing, painting
+    website: "https://www.masaakishibata.com"
+    year_of_birth: 1947
+    year_of_death: null
+    techniques:
+      - "Glazing"
+      - "Painting"
+    awards:
+      - "Japan Ceramic Society Award, 2005"
+  creation_date: "2010-01-01"
+  location: Tokyo, Japan
+  dimensions:
+    height: 10
+    width: 10
+    depth: 10
+  fire_temperature: 1000
+  fire_temperature_unit: "°C"
+  clay_type: "Porcelain"
+  glaze: null
+- title: "Blue and White Bowl"
+  description: |
+    A blue and white bowl with a floral pattern.
+
+    Dimensions: 20x20x20 cm
+    Fire temperature: 1200°C
+    Clay type: Stoneware
+    Glaze: Blue and white
+  artist:
+    name: "Lucie Rie"
+    bio: |
+      Lucie Rie was an Austrian-born British studio potter.
+
+      Awards: Potter's Gold Medal, 1987.
+
+      Skills: Throwing, glazing
+    website: "https://www.lucierie.com"
+    year_of_birth: 1902
+    year_of_death: 1995
+    techniques:
+      - "Throwing"
+      - "Glazing"
+    awards:
+      - "Potter's Gold Medal, 1987"
+  creation_date: "1970-01-01"
+  location: London, UK
+  dimensions:
+    height: 20
+    width: 20
+    depth: 20
+  fire_temperature: 1200
+  fire_temperature_unit: "°C"
+  clay_type: "Stoneware"
+  glaze: "Blue and white"
+- title: "Ceramic Sculpture"
+  description: |
+    A ceramic sculpture in form of a golden fish.
+
+    Dimensions: 30x10x20 cm
+    Fire temperature: 800°C
+    Clay type: Earthenware
+    Glaze: Gold
+  artist:
+    name: "Peter Voulkos"
+    bio: |
+      Peter Voulkos was an American artist of Greek descent.
+      
+      Awards: National Medal of Arts, 2001.
+
+      Skills: Throwing, hand-building, glazing
+
+    website: "https://www.petervoulkos.com"
+    year_of_birth: 1924
+    year_of_death: 2002
+    techniques:
+      - "Throwing"
+      - "Hand-building"
+      - "Glazing"
+    awards:
+      - "National Medal of Arts, 2001"
+  creation_date: "1980-01-01"
+  location: Portopolous, Greece
+  dimensions:
+    height: 30
+    width: 10
+    depth: 20
+  fire_temperature: 800
+  fire_temperature_unit: "°C"
+  clay_type: "Earthenware"
+  glaze: "Gold"
+----
