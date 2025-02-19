@@ -1,0 +1,1285 @@
+= LutaML Model Collections
+:doctype: standard
+:status: draft
+:language: en
+:script: Latn
+:title: LutaML Model Collections
+:docnumber: LTM-002
+:keywords: lutaml, model collection, data mapping
+
+== Scope
+
+This document specifies the collection capabilities in LutaML Model, which enable:
+
+* Definition of collections within models
+* Serialization of collections to different formats
+* Mapping of collection elements to different representations
+
+== Normative references
+
+* LutaML Model Framework
+* Ruby Programming Language Specification
+
+== Terms and definitions
+
+=== collection
+specialized class that defines a container for multiple instances of a model type
+
+=== collection element
+individual instance within a collection
+
+=== collection mapping
+rules that define how collection elements are serialized and deserialized
+
+== Collection types
+
+=== General
+
+LutaML Model provides the `Lutaml::Model::Collection` class for defining collections
+of model instances.
+
+=== Configuration
+
+==== `instances {attribute}, {ModelType}`
+
+Defined at the class level.
+
+Defines the collection attribute and the model type of the collection elements.
+
+==== `map_instances {to: :attribute}`
+
+Defined within the `key_value` block. In the `xml` block, the `map_attribute`
+and `map_element` directives are used instead.
+
+This directive maps individual array elements to the defined `instances`
+attribute. These are the items considered part of the Collection and reflected
+as Enumerable elements.
+
+NOTE: The `map_instances` directive is only used in the `key_value` block.
+
+
+=== Root collections
+
+Simple collections store multiple instances of the same model type.
+
+Syntax:
+
+[source,ruby]
+----
+class MyCollection < Lutaml::Model::Collection
+  instances :items, ModelType
+end
+----
+
+[example]
+====
+[source,ruby]
+----
+class Title < Lutaml::Model::Serializable
+  attribute :content, :string
+end
+
+class TitleCollection < Lutaml::Model::Collection
+  instances :titles, Title
+
+  xml do
+    no_root # default
+    map_element "title", to: :titles
+  end
+
+  key_value do
+    no_root # default
+    map_instances to: :titles
+  end
+end
+----
+
+[source,xml]
+----
+<title>
+  <content>Title One</content>
+</title>
+<title>
+  <content>Title Two</content>
+</title>
+<title>
+  <content>Title Three</content>
+</title>
+----
+
+[source,yaml]
+----
+---
+- content: Title One
+- content: Title Two
+- content: Title Three
+----
+
+[source,json]
+----
+[
+  {"content": "Title One"},
+  {"content": "Title Two"},
+  {"content": "Title Three"}
+]
+----
+
+[source,ruby]
+----
+titles = TitleCollection.from_yaml(yaml_data)
+titles.count
+# => 3
+titles.first.content
+# => "Title One"
+----
+====
+
+=== Direct element collections
+
+Collections can be defined to serialize elements directly under their parent
+without a container element.
+
+[example]
+====
+[source,ruby]
+----
+class DirectTitleCollection < Lutaml::Model::Collection
+  instances :items, Title
+
+  xml do
+    map_element "title", to: :items
+  end
+end
+
+class BibItem < Lutaml::Model::Serializable
+  attribute :titles, DirectTitleCollection
+
+  xml do
+    root "bibitem"
+  end
+end
+----
+
+This produces:
+
+[source,xml]
+----
+<bibitem>
+  <title>Title One</title>
+  <title>Title Two</title>
+  <title>Title Three</title>
+</bibitem>
+----
+====
+
+
+=== Named collections
+
+Named collections are collections wrapped inside a name or a key.
+
+Syntax:
+
+[source,ruby]
+----
+class NameType < Lutaml::Model::Serializable
+  attribute :name, :string
+end
+
+class NamedCollection < Lutaml::Model::Collection
+  instances :names, NameType
+
+  xml do
+    root_name "names"
+    map_element "item", to: :names
+  end
+
+  key_value do
+    root_name "names"
+    map_instances to: :names
+  end
+end
+----
+
+[source,xml]
+----
+<names>
+  <item>
+    <name>Item One</name>
+  </item>
+  <item>
+    <name>Item Two</name>
+  </item>
+  <item>
+    <name>Item Three</name>
+  </item>
+</names>
+----
+
+[source,yaml]
+----
+---
+names:
+  - name: Item One
+  - name: Item Two
+  - name: Item Three
+----
+
+[source,json]
+----
+{
+  "names": [
+    {"name": "Item One"},
+    {"name": "Item Two"},
+    {"name": "Item Three"}
+  ]
+}
+----
+
+
+
+=== Keyed collections (key-value collections only)
+
+Keyed collections store instances with unique keys.
+
+WARNING: Keyed collections used to be handled using
+https://github.com/lutaml/lutaml-model#collection-with-keyed-elements-keyed-collection[Collection with keyed elements (keyed collection)].
+However, this new mechanism is much easier to understand.
+
+In key-value collections, a key can be used to uniquely identify each instance.
+This usage allows for enforcing uniqueness in the collection.
+
+NOTE: This concept does not apply to XML collections.
+
+Syntax:
+
+[source,ruby]
+----
+class ModelType < Lutaml::Model::Serializable
+  attribute :key_attribute, :string
+end
+
+class KeyedCollection < Lutaml::Model::Collection
+  instances :items, ModelType
+
+  key_value do
+    map_key to: :key_attribute <1>
+    map_instances to: :items
+  end
+end
+----
+<1> The `:key_attribute` is the attribute name inside the `ModelType` used to uniquely identify each instance.
+
+[example]
+====
+[source,ruby]
+----
+class Author < Lutaml::Model::Serializable
+  attribute :id, :string
+  attribute :name, :string
+end
+
+class AuthorCollection < Lutaml::Model::Collection
+  instances :authors, Author
+
+  key_value do
+    map_key to: :id # This refers to 'authors[].id'
+    map_instances to: :authors
+  end
+end
+----
+
+[source,yaml]
+----
+---
+author_01:
+  name: Author One
+author_02:
+  name: Author Two
+author_03:
+  name: Author Three
+----
+
+[source,json]
+----
+{
+  "author_01": {"name": "Author One"},
+  "author_02": {"name": "Author Two"},
+  "author_03": {"name": "Author Three"}
+}
+----
+====
+
+
+
+=== Mapped collections
+
+Mapped collections define explicit serialization rules for collection elements.
+
+Syntax:
+
+[source,ruby]
+----
+class MyCollection < Lutaml::Model::Collection
+  instances :items, ModelType
+
+  xml do
+    root "root-element"
+    map_element "item", to: :items
+  end
+end
+----
+
+[example]
+====
+[source,ruby]
+----
+class TitleCollection < Lutaml::Model::Collection
+  instances :items, Title
+
+  xml do
+    root "title-group"
+    map_element "artifact", to: :items
+  end
+end
+----
+====
+
+
+
+== Collection serialization
+
+=== General
+
+Collections can be serialized to different formats using mapping rules.
+
+=== XML serialization
+
+XML serialization defines how collection elements are represented in XML.
+
+[example]
+====
+The `root` directive specifies the XML container element name.
+
+[source,ruby]
+----
+xml do
+  root "container-name"
+end
+----
+====
+
+[example]
+====
+The `map_element` directive specifies how individual elements are represented.
+
+[source,ruby]
+----
+xml do
+  map_element "element-name", to: :collection_attribute
+end
+----
+====
+
+=== Nested collections
+
+Collections can be nested within other models and define their own serialization rules.
+
+[example]
+====
+[source,ruby]
+----
+class Title < Lutaml::Model::Serializable
+  attribute :title, :string
+end
+
+class TitleCollection < Lutaml::Model::Collection
+  instances :items, Title
+
+  xml do
+    root "title-group"
+    map_element "artifact", to: :items
+  end
+end
+
+class BibItem < Lutaml::Model::Serializable
+  attribute :titles, TitleCollection
+
+  xml do
+    root "bibitem"
+    # This overrides the collection's root "title-group"
+    map_element "titles", to: :titles
+  end
+end
+----
+
+[source,xml]
+----
+<bibitem>
+  <titles>
+    <title>Title One</title>
+    <title>Title Two</title>
+    <title>Title Three</title>
+  </titles>
+</bibitem>
+----
+====
+
+== Collection mapping rules
+
+=== General
+
+Collection mapping rules determine how collection elements are serialized and
+deserialized.
+
+=== Root element override
+
+The root element name can be overridden at the collection usage point.
+
+[example]
+====
+[source,ruby]
+----
+class Title < Lutaml::Model::Serializable
+  attribute :title, :string
+end
+
+class TitleCollection < Lutaml::Model::Collection
+  instances :items, Title
+
+  xml do
+    root "title-group"
+    map_element "artifact", to: :items
+  end
+end
+
+class BibItem < Lutaml::Model::Serializable
+  attribute :titles, TitleCollection
+
+  xml do
+    root "bibitem"
+    # This overrides the collection's root "title-group"
+    map_element "titles", to: :titles
+  end
+end
+----
+
+[source,xml]
+----
+<bibitem>
+  <titles>
+    <title>Title One</title>
+    <title>Title Two</title>
+    <title>Title Three</title>
+  </titles>
+</bibitem>
+----
+====
+
+[example]
+====
+[source,ruby]
+----
+class Title < Lutaml::Model::Serializable
+  attribute :title, :string
+end
+
+class TitleCollection < Lutaml::Model::Collection
+  instances :items, Title
+
+  xml do
+    root "title-group"
+    # This overrides the element's root "title"
+    map_element "artifact", to: :items
+  end
+end
+
+class BibItem < Lutaml::Model::Serializable
+  attribute :titles, TitleCollection
+
+  xml do
+    root "bibitem"
+    map_element "title-group", to: :titles
+  end
+end
+----
+
+[source,xml]
+----
+<bibitem>
+  <title-group>
+    <artifact>Title One</artifact>
+    <artifact>Title Two</artifact>
+    <artifact>Title Three</artifact>
+  </title-group>
+</bibitem>
+----
+====
+
+
+
+
+== Collection behaviors
+
+=== Enumerable interface
+
+Collections implement the Ruby `Enumerable` interface, providing standard collection operations.
+
+Collections allows the following sample `Enumerable` methods:
+
+* `each` - Iterate over collection items
+* `map` - Transform collection items
+* `select` - Filter collection items
+* `find` - Find items matching criteria
+* `reduce` - Aggregate collection items
+
+[example]
+====
+[source,ruby]
+----
+class AuthorCollection < Lutaml::Model::Collection
+  instances :items, Author
+end
+
+authors = AuthorCollection.new
+
+# Iterate
+authors.each { |author| puts author.name }
+
+# Transform
+author_names = authors.map { |author| author.name }
+
+# Filter
+active_authors = authors.select { |author| author.active? }
+----
+====
+
+=== Collection validation
+
+Collections can define validation rules for their elements.
+
+Syntax:
+
+[source,ruby]
+----
+class ValidatedCollection < Lutaml::Model::Collection
+  instances :items, ModelType do
+    validates :attribute, presence: true
+    validate :custom_validation
+  end
+end
+----
+
+[example]
+====
+[source,ruby]
+----
+class PublicationCollection < Lutaml::Model::Collection
+  instances :items, Publication do
+    validates :title, presence: true
+    validates :year, numericality: { greater_than: 1900 }
+    
+    validate :must_have_author
+    
+    def must_have_author
+      errors.add(:base, "Publication must have an author") unless author.present?
+    end
+  end
+end
+----
+====
+
+=== Collection initialization
+
+Collections can be initialized with an array of items or through individual item addition.
+
+[example]
+====
+[source,ruby]
+----
+class AuthorCollection < Lutaml::Model::Collection
+  instances :items, Author
+end
+
+authors = AuthorCollection.new([
+  Author.new(name: "Author 1"),
+  Author.new(name: "Author 2")
+])
+----
+====
+
+[example]
+====
+[source,ruby]
+----
+authors = AuthorCollection.new
+authors << Author.new(name: "Author 1")
+authors.push(Author.new(name: "Author 2"))
+----
+====
+
+== Serialization formats
+
+=== General
+
+Collections support multiple serialization formats through format-specific mapping rules.
+
+=== YAML serialization
+
+YAML serialization defines how collection elements are represented in YAML.
+
+[example]
+====
+[source,ruby]
+----
+class AuthorCollection < Lutaml::Model::Collection
+  instances :items, Author
+
+  yaml do
+    map_instances :items
+  end
+end
+----
+====
+
+Produces:
+
+[source,yaml]
+----
+---
+authors:
+  - name: Author 1
+    bio: Bio 1
+  - name: Author 2
+    bio: Bio 2
+----
+
+=== JSON serialization
+
+JSON serialization defines how collection elements are represented in JSON.
+
+[example]
+====
+[source,ruby]
+----
+class AuthorCollection < Lutaml::Model::Collection
+  instances :items, Author
+
+  json do
+    root_key "authors"
+    map_instances :items
+  end
+end
+----
+
+Produces:
+
+[source,json]
+----
+{
+  "authors": [
+    {"name": "Author 1", "bio": "Bio 1"},
+    {"name": "Author 2", "bio": "Bio 2"}
+  ]
+}
+----
+====
+
+== Advanced collection features
+
+=== Ordered collections
+
+Collections that maintain a specific ordering of elements.
+
+[example]
+====
+[source,ruby]
+----
+class OrderedCollection < Lutaml::Model::Collection
+  instances :items, ModelType
+  ordered by: "date", order: :desc
+end
+
+class ModelType < Lutaml::Model::Serializable
+  attribute :date, :datetime
+end
+----
+====
+
+// === Reference collections
+
+// Collections that maintain references to model instances rather than containing the instances directly.
+
+// [example]
+// ====
+// [source,ruby]
+// ----
+// class ReferenceCollection < Lutaml::Model::Collection
+//   instances :items, ModelType do
+//     reference true
+//     reference_by :identifier
+//   end
+// end
+// ----
+// ====
+
+
+== Operations
+
+=== Collection-level operations
+
+Collections can be combined using set operations to create new collections.
+
+Syntax:
+
+[source,ruby]
+----
+# Union
+collection1.union(collection2)
+
+# Intersection
+collection1.intersection(collection2)
+
+# Difference
+collection1.difference(collection2)
+----
+
+[example]
+====
+[source,ruby]
+----
+class AuthorCollection < Lutaml::Model::Collection
+  instances :items, Author
+end
+
+# Usage
+authors1 = AuthorCollection.new([
+  Author.new(name: "Author 1"),
+  Author.new(name: "Author 2")
+])
+
+authors2 = AuthorCollection.new([
+  Author.new(name: "Author 2"),
+  Author.new(name: "Author 3")
+])
+
+combined = authors1.union(authors2)
+common = authors1.intersection(authors2)
+unique = authors1.difference(authors2)
+----
+====
+
+=== Enumerable methods
+
+Collections inherit from Enumerable and support standard enumeration methods.
+
+Collections can be filtered using predicate methods to create new collections.
+
+Syntax:
+
+[source,ruby]
+----
+collection.filter(predicate)
+collection.reject(predicate)
+collection.select(predicate)
+----
+
+[example]
+====
+[source,ruby]
+----
+class PublicationCollection < Lutaml::Model::Collection
+  instances :items, Publication
+
+  def published
+    self.class.new(
+      items.select { |item| item.status == 'published' }
+    )
+  end
+
+  def by_year(year)
+    self.class.new(
+      items.select { |item| item.year == year }
+    )
+  end
+
+  def by_author(author_name)
+    self.class.new(
+      items.select { |item| item.author == author_name }
+    )
+  end
+end
+
+# Usage
+publications = PublicationCollection.new(items)
+published_2023 = publications.published.by_year(2023)
+----
+====
+
+Collections can be transformed using mapping methods to create new collections.
+
+Syntax:
+
+[source,ruby]
+----
+collection.count
+collection.sum(attribute)
+collection.average(attribute)
+collection.group_by(attribute)
+----
+
+[example]
+====
+[source,ruby]
+----
+class PublicationCollection < Lutaml::Model::Collection
+  instances :items, Publication
+
+  def total_citations
+    items.sum(&:citation_count)
+  end
+
+  def average_rating
+    items.sum(&:rating).to_f / items.count
+  end
+
+  def by_category
+    items.group_by(&:category)
+  end
+
+  def statistics
+    {
+      total_items: count,
+      total_citations: total_citations,
+      average_rating: average_rating,
+      by_status: items.group_by(&:status).transform_values(&:count)
+    }
+  end
+end
+----
+====
+
+Collections can be transformed while maintaining their collection nature.
+
+Syntax:
+
+[source,ruby]
+----
+collection.map(transform)
+collection.flat_map(transform)
+----
+
+[example]
+====
+[source,ruby]
+----
+class CitationCollection < Lutaml::Model::Collection
+  instances :items, Citation
+
+  def to_references
+    ReferenceCollection.new(
+      items.map { |citation| citation.to_reference }
+    )
+  end
+
+  def normalize
+    items.each do |citation|
+      citation.normalize!
+    end
+    self
+  end
+end
+----
+====
+
+
+
+[appendix]
+== Tutorial: Building a car parts database
+
+This tutorial demonstrates building a car parts database using LutaML collections,
+progressively adding features to show different collection capabilities.
+
+=== Step 1: Basic collection
+
+.Learning outcomes
+* Create a basic LutaML model
+* Instantiate a simple collection
+* Use basic enumeration methods
+
+[example]
+====
+First, define the basic model:
+
+[source,ruby]
+----
+class CarPart < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :description, :string
+  attribute :price, :float
+end
+----
+
+Then create a simple collection:
+
+[source,ruby]
+----
+class PartsCollection < Lutaml::Model::Collection
+  instances :parts, CarPart
+end
+
+# Create and use the collection
+parts = PartsCollection.new([
+  CarPart.new(name: "Engine Block", price: 1500.0),
+  CarPart.new(name: "Brake Pad", price: 50.0)
+])
+
+# Basic enumeration
+parts.each { |part| puts part.name }
+parts.count  # => 2
+----
+====
+
+.Key points
+* Collections inherit from Enumerable
+* Collections maintain type safety through the `instances` declaration
+* Basic enumeration methods are available out of the box
+
+=== Step 2: Adding serialization
+
+.Learning outcomes
+* Configure XML serialization
+* Configure YAML serialization
+* Understand format mapping differences
+
+[example]
+====
+Enhance the collection with serialization rules:
+
+[source,ruby]
+----
+class PartsCollection < Lutaml::Model::Collection
+  instances :parts, CarPart
+
+  xml do
+    root "parts-catalog"
+    map_element "part", to: :parts
+  end
+
+  yaml do
+    sequence "parts"
+  end
+end
+
+# Create some parts
+parts = PartsCollection.new([
+  CarPart.new(name: "Engine Block", price: 1500.0),
+  CarPart.new(name: "Brake Pad", price: 50.0)
+])
+
+# XML output
+parts.to_xml
+----
+
+Produces:
+
+[source,xml]
+----
+<parts-catalog>
+  <part>
+    <name>Engine Block</name>
+    <price>1500.0</price>
+  </part>
+  <part>
+    <name>Brake Pad</name>
+    <price>50.0</price>
+  </part>
+</parts-catalog>
+----
+
+[source,yaml]
+----
+parts:
+  - name: Engine Block
+    price: 1500.0
+  - name: Brake Pad
+    price: 50.0
+----
+====
+
+.Key points
+* Collections can support multiple serialization formats simultaneously
+* Each format can have its own mapping rules
+* Root elements and naming can be customized per format
+
+=== Step 3: Collection operations
+
+.Learning outcomes
+* Implement filtering methods
+* Add aggregation calculations
+* Chain collection operations
+
+[example]
+====
+Add operation methods to the collection:
+
+[source,ruby]
+----
+class PartsCollection < Lutaml::Model::Collection
+  instances :parts, CarPart
+
+  # ... existing serialization code ...
+
+  def expensive_parts(threshold = 1000.0)
+    self.class.new(
+      parts.select { |part| part.price > threshold }
+    )
+  end
+
+  def total_value
+    parts.sum(&:price)
+  end
+
+  def price_stats
+    {
+      total: total_value,
+      average: total_value / count,
+      max: parts.map(&:price).max,
+      min: parts.map(&:price).min
+    }
+  end
+end
+
+# Usage
+parts = PartsCollection.new([
+  CarPart.new(name: "Engine Block", price: 1500.0),
+  CarPart.new(name: "Brake Pad", price: 50.0),
+  CarPart.new(name: "Transmission", price: 1200.0)
+])
+
+expensive = parts.expensive_parts
+puts parts.price_stats
+----
+====
+
+.Key points
+* Collection operations return new collection instances
+* Operations can be chained
+* Statistical operations are easily implemented using Enumerable methods
+
+=== Step 4: Nested collections
+
+.Learning outcomes
+* Create hierarchical data structures
+* Configure nested serialization
+* Handle complex data relationships
+
+[example]
+====
+First, add a category model:
+
+[source,ruby]
+----
+class Category < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :description, :string
+end
+
+class PartCategory < Lutaml::Model::Serializable
+  attribute :category, Category
+  attribute :parts, PartsCollection
+end
+
+class CategorizedPartsCollection < Lutaml::Model::Collection
+  instances :categories, PartCategory
+
+  xml do
+    root "parts-catalog"
+    map_element "category", to: :categories do
+      map_element "name", to: "category.name"
+      map_element "parts", to: :parts
+    end
+  end
+end
+----
+
+Usage:
+
+[source,ruby]
+----
+engine_parts = PartsCollection.new([
+  CarPart.new(name: "Engine Block", price: 1500.0),
+  CarPart.new(name: "Piston", price: 100.0)
+])
+
+brake_parts = PartsCollection.new([
+  CarPart.new(name: "Brake Pad", price: 50.0),
+  CarPart.new(name: "Rotor", price: 75.0)
+])
+
+catalog = CategorizedPartsCollection.new([
+  PartCategory.new(
+    category: Category.new(name: "Engine"),
+    parts: engine_parts
+  ),
+  PartCategory.new(
+    category: Category.new(name: "Brakes"),
+    parts: brake_parts
+  )
+])
+----
+
+This produces:
+
+[source,xml]
+----
+<parts-catalog>
+  <category>
+    <name>Engine</name>
+    <parts>
+      <part>
+        <name>Engine Block</name>
+        <price>1500.0</price>
+      </part>
+      <part>
+        <name>Piston</name>
+        <price>100.0</price>
+      </part>
+    </parts>
+  </category>
+  <category>
+    <name>Brakes</name>
+    <parts>
+      <part>
+        <name>Brake Pad</name>
+        <price>50.0</price>
+      </part>
+      <part>
+        <name>Rotor</name>
+        <price>75.0</price>
+      </part>
+    </parts>
+  </category>
+</parts-catalog>
+----
+====
+
+.Key points
+* Collections can contain other collections
+* Serialization rules cascade through the hierarchy
+* Complex relationships can be modeled naturally
+
+=== Step 5: Keyed collections
+
+.Learning outcomes
+* Implement unique identifiers
+* Convert to keyed collection
+* Add efficient lookup methods
+
+[example]
+====
+Enhance the CarPart model with an identifier:
+
+[source,ruby]
+----
+class CarPart < Lutaml::Model::Serializable
+  attribute :id, :string
+  attribute :name, :string
+  attribute :price, :float
+end
+
+class KeyedPartsCollection < Lutaml::Model::Collection
+  instances :parts, CarPart
+
+  key_value do
+    map_key to: :id
+    map_instances to: :parts
+  end
+
+  xml do
+    root "parts-catalog"
+    map_element "part", to: :parts do
+      map_attribute "id", to: :id
+    end
+  end
+
+  def find_part(id)
+    parts.find { |part| part.id == id }
+  end
+
+  def find_parts_by_ids(ids)
+    self.class.new(
+      parts.select { |part| ids.include?(part.id) }
+    )
+  end
+end
+----
+
+Usage:
+
+[source,ruby]
+----
+parts = KeyedPartsCollection.new([
+  CarPart.new(id: "ENG001", name: "Engine Block", price: 1500.0),
+  CarPart.new(id: "BRK002", name: "Brake Pad", price: 50.0)
+])
+
+# YAML representation
+----
+
+Produces:
+
+[source,yaml]
+----
+ENG001:
+  name: Engine Block
+  price: 1500.0
+BRK002:
+  name: Brake Pad
+  price: 50.0
+----
+
+XML representation:
+
+[source,xml]
+----
+<parts-catalog>
+  <part id="ENG001">
+    <name>Engine Block</name>
+    <price>1500.0</price>
+  </part>
+  <part id="BRK002">
+    <name>Brake Pad</name>
+    <price>50.0</price>
+  </part>
+</parts-catalog>
+----
+
+Example lookups:
+
+[source,ruby]
+----
+# Find a single part
+engine = parts.find_part("ENG001")
+
+# Find multiple parts
+brake_engine = parts.find_parts_by_ids(["BRK002", "ENG001"])
+----
+====
+
+.Key points
+* Keys provide efficient lookup capabilities
+* Different serialization formats can represent keys differently
+* Keyed collections maintain referential integrity
+
+=== Summary
+
+This tutorial demonstrated:
+
+* Basic collection creation and usage
+* Multiple serialization format support
+* Collection operations and aggregation
+* Nested collection hierarchies
+* Keyed collection lookup patterns
+
+The progression from simple to complex features shows how LutaML collections
+can be used to build sophisticated data management systems.
