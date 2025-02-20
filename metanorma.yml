@@ -1,0 +1,12 @@
+---
+metanorma:
+  source:
+    files:
+      - sources/model-collection.adoc
+      - sources/model-transform.adoc
+      - sources/model-register.adoc
+      - sources/lutaml-path.adoc
+      
+  collection:
+    organization: "LutaML"
+    name: "LutaML specifications"

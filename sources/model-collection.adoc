@@ -1,11 +1,28 @@
-= LutaML Model Collections
+= LutaML -- Model Collections
+:edition: 1.0
 :doctype: standard
 :status: draft
-:language: en
-:script: Latn
-:title: LutaML Model Collections
-:docnumber: LTM-002
-:keywords: lutaml, model collection, data mapping
+:docnumber: RS 3002
+:published-date: 2025-02-20
+:status: published
+:security: unrestricted
+:committee: LutaML
+:committee-type: technical
+:imagesdir: images
+:mn-document-class: ribose
+:mn-output-extensions: xml,html,pdf,rxl
+:fullname: Ronald Tse
+:surname: Tse
+:givenname: Ronald
+:affiliation: Ribose
+:local-cache-only:
+:data-uri-image:
+:publisher: Ribose Inc.
+:pub-address: 167-169 Great Portland Street + \
+5th Floor + \
+London + \
+W1W 5PF + \
+United Kingdom
 
 == Scope
 
@@ -15,6 +32,7 @@ This document specifies the collection capabilities in LutaML Model, which enabl
 * Serialization of collections to different formats
 * Mapping of collection elements to different representations
 
+[bibliography]
 == Normative references
 
 * LutaML Model Framework

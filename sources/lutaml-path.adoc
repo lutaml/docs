@@ -1,11 +1,28 @@
 = LutaML -- Path
+:edition: 1.0
 :doctype: standard
 :status: draft
-:language: en
-:script: Latn
-:title: LutaML -- Path
-:docnumber: LTM-004
-:keywords: lutaml, model navigation, model query, path expressions
+:docnumber: RS 3005
+:published-date: 2025-02-20
+:status: published
+:security: unrestricted
+:committee: LutaML
+:committee-type: technical
+:imagesdir: images
+:mn-document-class: ribose
+:mn-output-extensions: xml,html,pdf,rxl
+:fullname: Ronald Tse
+:surname: Tse
+:givenname: Ronald
+:affiliation: Ribose
+:local-cache-only:
+:data-uri-image:
+:publisher: Ribose Inc.
+:pub-address: 167-169 Great Portland Street + \
+5th Floor + \
+London + \
+W1W 5PF + \
+United Kingdom
 
 == Introduction
 
@@ -27,6 +44,7 @@ This document specifies the path expression capabilities in LutaML Model, which 
 * Selection of model elements and attributes using path expressions
 * Filtering model instances based on predicates
 
+[bibliography]
 == Normative references
 
 * LutaML Model Framework

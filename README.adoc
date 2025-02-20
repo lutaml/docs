@@ -1,0 +1,69 @@
+= LutaML Specifications
+
+image:https://github.com/lutaml/docs/workflows/generate/badge.svg["Build Status", link="https://github.com/lutaml/docs/actions?query=workflow%3Agenerate"]
+
+This document is available in its rendered forms here:
+
+* https://lutaml.github.io/docs/[LutaML Specifications]
+
+== Introduction
+
+This repository contains the official specifications for the LutaML framework, a comprehensive suite of tools for model-driven development. The specifications include:
+
+RS 3005:: *LutaML Path* -- A query language for navigating and querying LutaML Models and their instances
+RS 3002:: *Model Collection* -- Specification for managing collections of model instances with serialization capabilities
+RS 3004:: *Model Register* -- Framework for model registration and discovery
+RS 3003:: *Model Transform* -- Specification for model transformation and mapping operations
+
+These specifications are written in Metanorma to generate standardized documentation in multiple formats.
+
+== Document Structure
+
+`sources/`:: source files for LutaML specifications in Metanorma format.
+
+`lutaml-path.adoc`::: LutaML Path specification
+`model-collection.adoc`::: Model Collection specification
+`model-register.adoc`::: Model Register specification
+`model-transform.adoc`::: Model Transform specification
+
+`_site/`::
+Generated documentation in multiple formats (HTML, PDF, XML, etc.)
+
+== Building the Documentation
+
+This repository uses Metanorma to build standardized documentation.
+
+=== Installing Build Tools
+
+See https://www.metanorma.org/install/ for detailed installation instructions.
+
+=== Building Locally
+
+If you have Metanorma installed locally, run:
+
+[source,sh]
+----
+metanorma site generate
+----
+
+=== Building with Docker
+
+If you prefer using Docker, run:
+
+[source,sh]
+----
+docker run -v "$(pwd)":/metanorma -w /metanorma -it metanorma/mn metanorma site generate
+----
+
+== Generated Formats
+
+The build process generates documentation in multiple formats:
+
+* HTML -- Web-friendly format with navigation
+* PDF -- Print-ready format
+* XML -- Machine-readable format
+* RXL -- Relaton XML bibliographic format
+
+== License
+
+Copyright Ribose.

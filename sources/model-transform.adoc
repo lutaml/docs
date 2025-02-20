@@ -1,11 +1,28 @@
-= LutaML -- Model transformations
+= LutaML -- Transforms
+:edition: 1.0
 :doctype: standard
 :status: draft
-:language: en
-:script: Latn
-:title: LutaML -- Model transformations
-:docnumber: LTM-001
-:keywords: lutaml, model transformation, data mapping
+:docnumber: RS 3003
+:published-date: 2025-02-20
+:status: published
+:security: unrestricted
+:committee: LutaML
+:committee-type: technical
+:imagesdir: images
+:mn-document-class: ribose
+:mn-output-extensions: xml,html,pdf,rxl
+:fullname: Ronald Tse
+:surname: Tse
+:givenname: Ronald
+:affiliation: Ribose
+:local-cache-only:
+:data-uri-image:
+:publisher: Ribose Inc.
+:pub-address: 167-169 Great Portland Street + \
+5th Floor + \
+London + \
+W1W 5PF + \
+United Kingdom
 
 == Scope
 
@@ -20,6 +37,7 @@ It defines:
 * Nested transformation rules
 * Bidirectional transformation capabilities
 
+[bibliography]
 == Normative references
 
 * LutaML Model Framework

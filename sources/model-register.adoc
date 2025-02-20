@@ -1,11 +1,28 @@
 = LutaML -- Model Register
+:edition: 1.0
 :doctype: standard
 :status: draft
-:language: en
-:script: Latn
-:title: LutaML -- Model Register
-:docnumber: LTM-003
-:keywords: lutaml, model register, model transformation, dynamic attributes
+:docnumber: RS 3004
+:published-date: 2025-02-20
+:status: published
+:security: unrestricted
+:committee: LutaML
+:committee-type: technical
+:imagesdir: images
+:mn-document-class: ribose
+:mn-output-extensions: xml,html,pdf,rxl
+:fullname: Ronald Tse
+:surname: Tse
+:givenname: Ronald
+:affiliation: Ribose
+:local-cache-only:
+:data-uri-image:
+:publisher: Ribose Inc.
+:pub-address: 167-169 Great Portland Street + \
+5th Floor + \
+London + \
+W1W 5PF + \
+United Kingdom
 
 == Scope
 
@@ -15,6 +32,7 @@ This document specifies the model register capabilities in LutaML Model, which e
 * Model hierarchy manipulation
 * Cross-model attribute type substitution
 
+[bibliography]
 == Normative references
 
 * LutaML Model Framework

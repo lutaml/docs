@@ -23,6 +23,7 @@ The tool is designed to be used by organizations that need to maintain registers
 of information items, such as document libraries, terminology databases, or any
 other type of managed content that requires versioning and governance.
 
+[bibliography]
 == Normative references
 
 * ISO 19135:2025, Geographic information — Procedures for item registration
