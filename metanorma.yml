@@ -2,6 +2,7 @@
 metanorma:
   source:
     files:
+      - sources/lutaml-lang.adoc
       - sources/model-collection.adoc
       - sources/model-transform.adoc
       - sources/model-register.adoc

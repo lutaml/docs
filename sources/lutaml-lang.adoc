@@ -1,0 +1,1450 @@
+= LutaML -- Language reference
+:edition: 1.0
+:doctype: standard
+:docnumber: RS 3001
+:published-date: 2024-03-10
+:status: published
+:security: unrestricted
+:committee: LutaML
+:committee-type: technical
+:imagesdir: images
+:mn-document-class: ribose
+:mn-output-extensions: xml,html,pdf,rxl
+:fullname: Ronald Tse
+:surname: Tse
+:givenname: Ronald
+:affiliation: Ribose
+:local-cache-only:
+:data-uri-image:
+:publisher: Ribose Inc.
+:pub-address: 167-169 Great Portland Street + \
+5th Floor + \
+London + \
+W1W 5PF + \
+United Kingdom
+
+== Scope
+
+This document defines the syntax and semantics of the Luta Modeling Language
+(LutaML), a domain-specific language for defining data models and
+instances of data those data models.
+
+[bibliography]
+== Normative references
+
+== Terms and definitions
+
+=== information model
+
+representation of structured data
+
+=== model
+
+abstract representation of a category of information
+
+NOTE: Commonly, a collection of classes, enums, and relationships defining a
+data structure.
+
+=== class
+
+defined characteristics of a type of object, including attributes and constraints
+
+=== enum
+
+predefined set of values
+
+=== instance
+
+data conforming to a class definition
+
+=== attribute
+
+characteristic of a property of a {{class}}
+
+NOTE: Commonly defined by a name, type, and cardinality
+
+=== reference
+
+relationship between instances
+
+NOTE: Can be implemented as pointer to another instance or attribute.
+
+=== cardinality
+
+allowed number of values for an attribute
+
+NOTE: Commonly expressed as a range (e.g., 0..1, 1..n).
+
+
+== Purpose
+
+=== Data modeling
+
+Information is stored and used as data in digital systems. Digital systems
+rely on defined structures to store, retrieve and manipulate data in a
+consistent manner.
+
+A data model is a structured representation of the data that describes the
+properties of the data, the relationships between different data elements, and
+any rules or constraints that govern the data.
+
+Data modeling is the process of creating a data model.
+
+Many data modeling languages exist, each with its own syntax and semantics.
+
+[example]
+UML (Unified Modeling Language) is a general-purpose modeling
+language that can be used to model a wide variety of information.
+
+[example]
+EXPRESS is a data modeling language designed to represent information
+requirements.
+
+Commonly languages that define data models are called "conceptual modeling
+languages".
+
+While many data modeling languages are used to define data models in a way that is
+independent of underlying technologies used, most data modeling languages do not
+provide a way to define how data is represented in an information system.
+
+For example, information models in UML are mostly used for diagramming and
+documentation purposes, and do not provide a way to define how the data can be
+accessed or used in programming languages.
+
+
+=== Serialization
+
+Serialization is the process of converting data structures or objects into a
+format that can be stored or transmitted between systems. Typically, this
+involves converting the data into a string of bytes that can be written to a
+file or sent over a network.
+
+Serialization formats are very important in allowing systems to exchange
+structured information in an interoperable manner without loss of semantics.
+
+[example]
+Common serialization formats include JSON, XML, and YAML.
+
+Serialization formats often come with a schema language that allows for the
+definition of particular data structures that data needs to conform to.
+
+[example]
+XML Schema, JSON Schema, and YAML Schema represent the schema languages
+for XML, JSON, and YAML, respectively.
+
+Typically, languages that define serialization formats are called "schema
+languages".
+
+A conceptual model may be realized ("implemented") in multiple serialization
+formats. For example, some standards define a conceptual model in UML and
+provide manually-defined transformation rules to XML and JSON.
+
+
+=== Access in programming languages
+
+Information defined by conceptual data models and serialization schema languages
+are not directly usable in a native manner in programming languages or APIs.
+
+At the conceptual data model level, there is no direct mapping to programming
+language constructs. For example, a UML class diagram does not directly map to a
+Java class.
+
+There are tools that attempt to generate code from UML models, yet the generated
+code will require manual integration and intervention to be usable in software.
+
+At the serialization schema language level, there is again no direct access
+from the programming language to the schema language constructs. For example, a
+JSON Schema does not directly map to a Java class. Typically developers will
+write code that parses the schema and/or implement code to read and write data
+in the format defined by the schema.
+
+The lack of direct access to data models and serialization formats in
+programming languages makes it difficult to work with structured data in a
+consistent manner across different systems and technologies.
+
+
+=== Interleaving conceptual modeling and serialization format modeling
+
+Conceptual modeling focuses on the definition of the existence and
+relationships of data elements.
+
+Serialization data modeling focuses on low-level details of how data is
+represented in a particular format.
+
+For example, a conceptual model may define that a `Date` object has
+`year`, `month`, `day` attributes, and each of them
+are of an `Integer` type and potentially the numbering constraints for each
+attribute, and that there are certain restrictions to what the attributes can be
+at an attribute level (valid values of `month` range from 1 to 12),
+or at the object level (only a leap year is allowed to have 29 days in February).
+It does not specify how many bytes are to be used to represent an `Integer` or
+how the `Date` object is to be written in a file.
+
+A serialization data model (using a schema language) may define that a `Date`
+object is represented as a sequence of 3 Integers, each representing the `year`,
+the `month`, and the `day`, respectively, and that the `Integer` type is
+represented as a 4-byte unsigned integer. While the schema language may support
+value constraints that the `month` attribute must be between 1 and 12, it is
+unlikely that the schema language supports object-level complex constraints such
+as "only a leap year is allowed to have 29 days in February". Schema languages
+typically do not have the expressive power to define such complex constraints.
+
+This presents a conundrum for the data modeler, who needs to define the entire
+structure and constraints, but also needs to decide where and how to define
+constraints that may not be definable in a schema language. This complexity
+explodes exponentially as the need for the same data to be represented in
+additional schema languages arises.
+
+How much of the constraints should be defined in the conceptual model? How much
+of the data model constraints should be defined in the serialization schema
+language? Do we need to define duplicated constraints in both the conceptual
+model and the serialization schema language if allowed? This is a question that
+haunts developers and data modelers alike.
+
+
+=== Challenges in data interchange
+
+==== General
+
+Interchange of data between systems of a particular data model can be
+challenging due to multiple factors.
+
+==== Derivation of serialization formats from conceptual models
+
+A successful, modern conceptual model is expected to support multiple
+serialization formats, given the variety of modern systems and tech stack
+components.
+
+While it is possible to define a conceptual model in a data modeling language,
+and then manually define transformation rules to convert the model into
+serialization formats, this is a time-consuming and error-prone process.
+
+This issue is exacerbated by the fact that the transformation rules are not
+always well-defined and may not be easily maintained. A change in the conceptual
+model may require changes in multiple serialization formats, and it is difficult
+to maintain synchronicity between the conceptual model and the serialization
+formats.
+
+The solution to this problem is to define a single source of truth for the data
+model, and then automatically derive the serialization formats from the data
+model.
+
+Even with automatic derivation, there are additional concerns (which we shall
+address later):
+
+* Versioning: How do we version the data model and the serialization formats?
+* Migration: How do we migrate data from one version of the data model to another?
+* Interoperability: How do we ensure that data can be exchanged between systems
+  that use different versions of the data model?
+* Access: How do we work with different versions of the data model in a
+  programming language?
+
+
+
+==== Complexity
+
+Modern technical stacks are composed of multiple systems that are built using
+different technologies and data modeling languages.
+
+Browser-based applications may use JSON to represent data, while server-side
+applications may use XML. Databases may use SQL to define data structures, while
+APIs may use JSON Schema to define data structures.
+
+
+==== Model definition language incompatibility
+
+Different data modeling languages have different syntax and semantics. This
+makes it difficult to interchange data between systems that are defined using
+different data modeling languages.
+
+For example, a data model defined in UML may not be directly convertible to a
+data model defined in EXPRESS.
+
+When a schema language is used to define data structures, the schema language
+itself may not be directly convertible to another schema language.
+
+For example, an XML Schema may not be directly convertible to a JSON Schema.
+
+Typical approaches used today include:
+
+* create a transformation toolchain that convert serialized formats to a defined
+serialization format, then use a codebase that can parse the defined
+serialization format
+
+* create a transformation toolchain that convert serialized formats to an
+intermediary representation, and then use a codebase that reads that
+intermediary representation.
+
+Imagine that there are 5 serialization formats that need to be supported.
+
+Neither of these approaches is ideal, as they require additional work to be
+done, and may introduce errors in the transformation process.
+
+
+
+==== Semantic incompatibility of conceptual modeling languages
+
+===== General
+
+Some modeling languages are at their core, incompatible with each other due to
+their different foundational principles and structures.
+
+===== Comparing UML and EXPRESS
+
+Both UML and EXPRESS are conceptual modeling languages intended for general use.
+
+However, some UML concepts are not directly mappable to EXPRESS concepts:
+
+* A UML class can have "methods", but an EXPRESS `ENTITY` allows only validation
+logic (via `WHERE`, `RULES`, or `FUNCTION`/`PROCEDURE`), which is declarative and
+stateless.
+
+* EXPRESS `SELECT` types (flexible polymorphic unions) have no direct UML
+equivalent. UML generalizations or interfaces approximate `SELECT` but lose
+EXPRESS's runtime validation semantics.
+
+
+===== Comparing UML and RDF
+
+UML is a class-based modeling language, while RDF is a graph-based modeling
+language.
+
+* The concept of encapsulation (private/public attributes) in UML is not supported in RDF.
+
+* The property multiplicity constraints (e.g., 1..*) cannot be enforced in RDF.
+
+* RDF applies graph-based relationships (arbitrary connections between resources)
+that are incompatible with the hierarchical class/object structure used in UML.
+
+
+===== Approach
+
+It is clear that a direct mapping between certain conceptual model languages is
+impossible without losing some semantics.
+
+Some communities have attempted to define mappings between conceptual model
+languages, which often become rather complex as re-implementations of the modeling
+language in another language. The result is a loss of semantics, expressivity,
+and deviation from the conventions, benefits, and usability of the modeling
+language.
+
+The solution to this problem is to take a common approach that works across
+different conceptual modeling languages, and then define additional rules for
+each language to supplement the common approach.
+
+
+==== Conversion difficulties between serialization formats
+
+===== General
+
+Some serialization formats are not directly mappable to each other, due to the
+differences in syntax and semantics between the formats.
+
+This means that a document in one serialization format cannot be directly
+converted to another serialization format without modification.
+
+These features are critical in data representation and serialization contexts.
+
+===== Comparing YAML Schema and JSON Schema
+
+Though YAML Schema is derived from JSON Schema, there are differences between the
+two serialization formats that make direct conversion difficult without
+additional handling. These include:
+
+* Content-level semantic differences
+
+** Data type mismatches. YAML supports data types not native to JSON, such as
+date-time, symbols, and binary data. As a result, a defined transform needs to
+be implemented to round-trip these data types between YAML and JSON.
++
+[example]
+A value that is of date-time type in YAML does not have a direct equivalent in
+JSON. Such value is likely to be represented as a string in JSON. In a round-trip
+operation, the JSON-to-YAML transform needs to detect that the string is a
+date-time value and convert it back to a date-time value in YAML.
+
+* Serialization-level semantic differences
+
+** YAML supports multi-line strings, while JSON does not. A multi-line string in
+YAML can be represented using modifier symbols on keys (such as the `|` and `>`
+characters), but these are serialization-level specifics that are not part of
+the content model, and hence JSON would have no representation for them.
++
+[example]
+Given YAML content that uses one of these multi-line structures, a round-trip
+between JSON and YAML would lose the multi-line structure and end up with a
+single-line string in the YAML serialization.
+
+** YAML supports anchors and references, while JSON does not. In YAML, it is
+possible to define an anchor for a value and then reference that anchor
+in another part of the YAML document in order to reuse the value. JSON does not
+have a direct equivalent for this feature.
++
+[example]
+Given a YAML document that uses anchors and references, a round-trip between JSON
+and YAML would lose the anchor and reference structure and end up with a
+repeated value in the YAML serialization.
+
+===== Comparing XML Schema (XSD) and JSON Schema
+
+XML Schema (XSD) is also not directly mappable to JSON Schema as XSD provides
+features that JSON Schema does not include, such as:
+
+* Content-level semantic differences
+
+** Data type mismatches. JSON Schema supports the data types of string, number,
+object, array, boolean, and null, while XSD supports these data types and many
+additional data types such as date, time, and duration.
+
+** Namespace support. XSD supports the concept of namespaces, while JSON Schema
+does not.
+
+** Composing complex types. XSD offers the ability to define complex composite
+types and allows those to be reused in multiple places in the schema. JSON
+Schema does not have a direct equivalent for this feature.
+
+** Value constraints. XSD supports placing constraints on string values using
+regular expressions, but JSON Schema does not have a direct equivalent for this
+feature.
+
+** Serialization order and structural constraints. XSD allows for the definition
+of element sequences, groups, choices, and unions. JSON Schema does not have a
+direct equivalent for these features.
+
+* Serialization-level semantic differences
+
+** XML attributes. XSD allows for the definition of attributes on elements, while
+JSON Schema does not have a direct equivalent for this feature.
+
+** XML comments. XML allows comments in the schema, while JSON does not.
+
+** XML processing instructions. XML allows processing instructions in the schema,
+while JSON does not.
+
+** XML entities. XML allows entities in the schema, while JSON does not. This
+means that an XML file with entities will likely be represented as a string in
+JSON, causing a round-trip operation from XML to lose the entity structure.
+
+** XML CDATA sections. XML allows CDATA sections in the schema, while JSON only
+has one type of string. This means that an XML file with CDATA sections will
+likely be represented as a string in JSON, causing a round-trip operation from
+XML to lose the CDATA structure.
+
+===== Approach
+
+The solution to this problem is to define a common approach that works across
+different serialization formats, and then define additional rules for each
+format to supplement the common approach.
+
+
+=== Goals
+
+LutaML is a system that aims to simplify users to easily define data models and
+work with information that conforms to those data models.
+
+The goal of LutaML is to allow these steps to flow seamlessly:
+
+. Define a platform-independent data model in a human-readable format. (LutaML
+language)
+. Allow the data model to be directly useable in a programming language. (LutaML
+runtime)
+. Allow the data model to be expressed in a serialization schema language.
+(LutaML language)
+. Allow the data model to be directly serializable to a serialization format.
+(LutaML runtime)
+. Support the loading of data from a serialization format into a programming
+language. (LutaML runtime)
+. Allow importing a serialization schema language to define a data model.
+(LutaML runtime)
+. Allow the conversion of serialization formats to another through the data
+model. (LutaML runtime)
+
+
+The LutaML language provides a way to represent structured data in a human-readable
+format.
+
+== Principles
+
+The principles of LutaML are:
+
+. Provide a human-readable syntax for defining data models.
+. Consistent language constructs.
+. The language should be simple and easy to understand, and does not require
+specialized knowledge for particular serialization formats unless advance
+features are needed.
+. Support modular reuse of definitions across files.
+. Support instance representation of data models.
+
+
+== Core syntax
+
+The core syntax of LutaML is based on the following constructs:
+
+* primitive values
+* command
+* argument
+* block
+* comment
+
+=== Primitive values
+
+Primitive values are the basic building blocks of LutaML.
+
+All primitive types have names that start with uppercase.
+
+LutaML supports the following primitive values:
+
+* `String` (e.g., `"high-fire"`),
+* `Integer` (e.g., `42`).
+* `Float` (e.g., `3.5`),
+* `Boolean` (e.g., `true`),
+* `Time_without_date` (e.g., `12:00:00`),
+* `Date-time` (e.g., `2024-01-01T12:00:00+00:00`)
+* `Time` (e.g., `2024-01-01T12:00:00+00:00`)
+* `Decimal` (e.g., `3.14159`)
+* `Hash` (e.g., `{ "key": "value" }`)
+
+
+=== Command, arguments and blocks
+
+A command is a keyword that represents an action or a declaration.
+
+Syntax:
+
+[source,lml]
+----
+{command} {*argument} {*block}
+----
+
+Where,
+
+`{command}`:: the command keyword
+`{*argument}`:: zero or more arguments
+`{*block}`:: an optional blocks
+
+An argument is a string, which can be a primitive value or a reference to another
+object.
+
+A block is delimited by curly braces and provides a context for inner commands.
+
+[example]
+====
+This example shows the `class` command that takes an argument `Studio` to
+represent the name of the class.
+
+[source,lml]
+----
+class Studio
+----
+====
+
+[example]
+====
+This example shows the `class` command that takes an argument `Studio` as its
+name with a block given, where it contains an attribute.
+
+[source,lml]
+----
+class Studio {
+  attribute ...
+}
+----
+====
+
+=== Comment
+
+A comment is a line of text that is ignored by the processor.
+
+==== Single-line comment
+
+A single-line comment is also called a "tail comment", a comment that appears at
+the end of a line.
+
+The `//` character sequence can appear at the beginning of a line or after
+whitespace.
+
+Syntax:
+
+[source,lml]
+----
+// {text}
+or
+{expression} // {text}
+----
+
+Where,
+
+`{text}`:: the comment text
+
+[example]
+====
+[source,lml]
+----
+// This is a comment
+----
+====
+
+[example]
+====
+[source,lml]
+----
+class Studio { // This is a comment
+  attribute location, String
+}
+----
+====
+
+[example]
+====
+[source,lml]
+----
+// TODO: attributes <1>
+class Ceramic {
+  // Write docs <2>
+  + glazeType: GlazeType // Glaze type <3>
+}
+----
+
+<1> A line beginning with `//` is a comment.
+<2> A line beginning with whitespaces followed by `//` is a comment.
+<3> A line with `//` is a tail comment: the text after `//` is a comment.
+====
+
+
+==== Multi-line comment
+
+Comments can also be multi-line.
+
+Syntax:
+
+[source,lml]
+----
+/* {text} */
+----
+
+Where,
+
+`{text}`:: the comment text
+
+[example]
+====
+[source,lml]
+----
+/* This is a
+multi-line comment */
+----
+====
+
+
+==== Definition
+
+The `definition` block is used to define a multiline description for a class.
+
+Syntax:
+
+[source,lml]
+----
+definition {text}
+// or
+definition {block}
+----
+
+Where,
+
+`{text}`:: the description text
+`{block}`:: description text block
+
+[example]
+====
+[source,lml]
+----
+definition "Non-reflective finish"
+----
+====
+
+[example]
+====
+[source,lml]
+----
+definition {
+  Non-reflective finish
+}
+----
+====
+
+Content within the block is considered to be multi-line textual content.
+No commands are available within the block.
+
+[example]
+.Declaring a class named "Ceramic" with a description
+====
+[source]
+----
+class Ceramic {
+  definition {
+    This class represents a ceramic object.
+  }
+}
+----
+====
+
+
+
+
+== Representable objects
+
+=== General
+
+LutaML supports the following constructs.
+
+
+=== Model / Package
+
+The `models` construct is used to define a collection of classes and enums.
+
+Syntax:
+
+[source,lml]
+----
+models {name} {block}
+----
+
+Where,
+
+`{name}`:: the name of the model package
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+models Ceramics {
+  enum FiringProfile { values { "low", "medium", "high" } }
+
+  class CeramicTile {
+    attribute dimensions, float { cardinality 2 }  // [length, width]
+    attribute firing_profile, FiringProfile
+  }
+}
+----
+====
+
+Within the block, the following commands are available:
+
+* `class`
+* `enum`
+* `description`
+
+
+=== Class
+
+The `class` construct is used to define a class which is a collection of
+attributes.
+
+Syntax:
+
+[source,lml]
+----
+class {name} {block}
+----
+
+Where,
+
+`{name}`:: the name of the class
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String {
+    description "Location of the studio"
+  }
+  attribute potter, String {
+    description "Name of the potter"
+  }
+  attribute kiln, String {
+    description "Type of kiln used"
+  }
+}
+----
+====
+
+[example]
+====
+[source,lml]
+----
+class TemperatureWithUnit {
+  attribute value, Float {
+    description "Temperature value"
+  }
+  attribute unit, String {
+    description "Unit of temperature"
+  }
+}
+----
+====
+
+Class attributes can be restricted to a specific set of values using the `values` command.
+
+[example]
+====
+[source,lml]
+----
+class GlazeTechnique {
+  attribute name, String {
+    values { "Celadon", "Raku", "Majolica" }
+  }
+}
+----
+
+Or
+
+[source,lml]
+----
+enum GlazeTechniqueEnum {
+  value "Celadon"
+  value "Raku"
+  value "Majolica"
+}
+class GlazeTechnique {
+  attribute name, String {
+    values GlazeTechniqueEnum
+  }
+}
+----
+====
+
+It is possible to also define values with object instances.
+
+[example]
+====
+// [source,ruby]
+// ----
+// class Ceramic < Lutaml::Model::Base
+include Lutaml::Model::Serializable
+//   attribute :type, :string
+//   attribute :firing_temperature, :integer
+// end
+
+// class CeramicCollection < Lutaml::Model::Base
+include Lutaml::Model::Serializable
+//   attribute :featured_piece,
+//             Ceramic,
+//             values: [
+//               Ceramic.new(type: "Porcelain", firing_temperature: 1300),
+//               Ceramic.new(type: "Stoneware", firing_temperature: 1200),
+//               Ceramic.new(type: "Earthenware", firing_temperature: 1000),
+//             ]
+// end
+// ----
+
+[source,lml]
+----
+class Ceramic {
+  attribute type, String
+  attribute firing_temperature, Integer
+}
+
+class CeramicCollection {
+  attribute featured_piece, Ceramic {
+    values {
+      instance Ceramic {
+        type = "Porcelain"
+        firing_temperature = 1300
+      }
+      instance Ceramic {
+        type = "Stoneware"
+        firing_temperature = 1200
+      }
+      instance Ceramic {
+        type = "Earthenware"
+        firing_temperature = 1000
+      }
+    }
+  }
+}
+----
+====
+
+Within the block, the following commands are available:
+
+* `attribute`
+* `description`
+
+
+=== Attribute
+
+The `attribute` construct is used to define an attribute of a class.
+
+Syntax:
+
+[source,lml]
+----
+attribute {name}, {type} {block}
+----
+
+Where,
+
+`{name}`:: the name of the attribute
+`{type}`:: the type of the attribute
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+attribute location, String {
+  description "Location of the studio"
+}
+----
+====
+
+[example]
+====
+[source,lml]
+----
+attribute dimensions, Float {
+  description "Dimensions of the ceramic piece"
+}
+----
+====
+
+An attribute can have a cardinality constraint when it is a collection.
+
+Syntax:
+
+[source,lml]
+----
+attribute {name}, {type} { cardinality {min}..{max} }
+----
+
+Where,
+
+`{min}`:: the minimum number of values
+`{max}`:: the maximum number of values
+
+
+[example]
+====
+[source,lml]
+----
+attribute batch_ids, String { cardinality 0..n }
+----
+====
+
+An attribute can have a values constraint.
+
+Syntax:
+
+[source,lml]
+----
+attribute {name}, {type} { values {value1, value2, ...} }
+----
+
+Where,
+
+`{value1, value2, ...}`:: the values that the attribute can take, or an Enum.
+
+
+[example]
+====
+[source,lml]
+----
+attribute firing_profile, FiringProfile {
+  values { "low", "medium", "high" }
+}
+----
+====
+
+[example]
+====
+[source,lml]
+----
+enum FiringProfileEnum {
+  value "low"
+  value "medium"
+  value "high"
+}
+class FiringProfile {
+  attribute firing_profile, FiringProfile {
+    values FiringProfileEnum
+  }
+}
+----
+====
+
+
+An attribute that accepts a string value accepts value validation using regular
+expressions.
+
+Syntax:
+
+[source,lml]
+----
+attribute {name}, String { pattern {regex} }
+----
+
+Where,
+
+`{regex}`:: the regular expression to validate the string value
+
+[example]
+====
+In this example, the `color` attribute takes hex color values such as `#ccddee`.
+
+A regular expression can be used to validate values assigned to the attribute.
+In this case, it is `/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/`.
+
+[source,lml]
+----
+attribute color, String {
+  pattern /\A#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})\z/
+}
+----
+====
+
+An attribute can have a default value using the `default` option.
+The `default` option can be set to a value or a lambda that returns a value.
+
+Syntax:
+
+[source,lml]
+----
+attribute {name}, {type} { default: {value} }
+----
+
+.Using the `default` option to set a default value for an attribute
+[example]
+====
+// [source,ruby]
+// ----
+// class Glaze < Lutaml::Model::Base
+include Lutaml::Model::Serializable
+//   attribute :color, :string, default: -> { 'Clear' }
+//   attribute :temperature, :integer, default: -> { 1050 }
+// end
+// ----
+
+[source,lml]
+----
+class Glaze {
+  attribute color, String { default: "Clear" }
+  attribute temperature, Integer { default: 1050 }
+}
+----
+====
+
+
+
+Within the block, the following commands are available:
+
+* `description`
+* `values`
+* `cardinality`
+
+
+
+=== Value
+
+The `value` construct is used to define a value.
+
+Syntax:
+
+[source,lml]
+----
+value {name} {block}
+----
+
+Where,
+
+`{name}`:: the name of the value
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+value "Porcelain" {
+  description "Ceramic material made from kaolin clay"
+}
+----
+====
+
+=== Enums
+
+An `enum` construct is used to defined a named collection of values.
+Objects inside an Enum may be primitive values or instances of objects.
+
+Syntax:
+
+[source,lml]
+----
+enum {name} {block}
+----
+
+Where,
+
+`{name}`:: the name of the enum
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+enum GlazeTechnique {
+  value "Celadon" {
+    description "Technique that creates glaze in a pale green color"
+  }
+  value "Raku" {
+    description "Technique that creates a crackled glaze"
+  }
+  value "Majolica" {
+    description "Technique that creates a white glaze"
+  }
+
+  description "Techniques for glazing ceramics"
+}
+----
+====
+
+[example]
+====
+[source,lml]
+----
+enum GlazeType {
+  value "matte" { description "Non-reflective finish" }
+  value "gloss" { description "Reflective finish" }
+}
+----
+====
+
+Within the block, the following commands are available:
+
+* `value`
+* `description`
+
+
+
+== Serialization
+
+=== General
+
+LutaML supports the following constructs for serialization.
+
+=== XML
+
+==== General
+
+LutaML supports the serialization of data models to XML.
+
+Syntax:
+
+[source,lml]
+----
+xml {block}
+----
+
+Where,
+
+`{block}`:: an XML block
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String
+  attribute potter, String
+  attribute kiln, String
+
+  xml {
+    map_element "location" { attribute location }
+    map_element "potter" { attribute potter }
+    map_attribute "kiln" { attribute kiln }
+  }
+}
+----
+====
+
+==== Setting root element name
+
+Setting root element name:
+
+[source,lml]
+----
+xml {
+  root "xml_element_name"
+}
+----
+
+[example]
+====
+[source,lml]
+----
+xml {
+  root "studio"
+}
+----
+====
+
+
+Within the block, the following commands are available:
+
+* `map_element`
+* `map_attribute`
+
+
+
+=== JSON
+
+LutaML supports the serialization of data models to JSON.
+
+
+
+== Instance representation
+
+=== Instance collection
+
+Instances are representations of classes with values assigned to their
+attributes as a collection.
+
+Syntax:
+
+[source,lml]
+----
+instances {name} {block}
+----
+
+Where,
+
+`{name}`:: the name of the instance
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+instances "Studios" {
+  instance Studio {
+    location = "Paris"
+    potter = "Marie"
+    kiln = "Electric"
+  }
+
+  instance Studio {
+    location = "Berlin"
+    potter = "Hans"
+    kiln = "Gas"
+  }
+}
+----
+====
+
+[example]
+====
+[source,lml]
+----
+instances "Tiles" {
+  instance "square" CeramicTile {
+    dimensions = [30.5, 30.5]
+    firing_profile = "high"
+  }
+
+  instance "circle" CeramicTile {
+    dimensions = [20.5, 20.5]
+    firing_profile = "medium"
+  }
+}
+----
+====
+
+Within the block, the following commands are available:
+
+* `instance`
+
+== Instance
+
+An `instance` construct is used to define an instance of a class.
+
+Syntax:
+
+[source,lml]
+----
+instance {name} {block}
+----
+
+Where,
+
+`{name}`:: the name of the instance
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String
+  attribute potter, String
+  attribute kiln, String
+}
+
+instance "Studio" {
+  location = "Paris"
+  potter = "Marie"
+  kiln = "Electric"
+}
+----
+====
+
+[example]
+====
+[source,lml]
+----
+class CeramicTile {
+  attribute dimensions, Float { cardinality 2 }
+  attribute firing_profile, FiringProfile
+}
+
+instance "square" CeramicTile {
+  dimensions = [30.5, 30.5]
+  firing_profile = "high"
+}
+----
+====
+
+Within the block, the following commands are available:
+
+* attributes of the class
+* `description`
+
+
+
+
+
+=== Value type
+
+==== References
+
+References are used to link instances together.
+
+Syntax:
+
+[source,lml]
+----
+ref:(path)
+----
+
+Where,
+
+`{path}`:: the path to the instance
+
+[example]
+====
+[source,lml]
+----
+instances Glazes {
+  GlazeFormula "blue_matte" {
+    components = ["silica", "cobalt"]
+  }
+
+  CeramicTile "tile_002" {
+    glaze = ref:(Glazes.blue_matte)
+  }
+}
+----
+====
+
+
+
+== Reuse and referencing
+
+Lutaml supports modularity through external file inclusions.
+
+=== External file inclusion
+Use `require` to import definitions from other files.
+
+[source,lml]
+----
+require "materials.lml"
+instances Tiles {
+  Materials::CeramicTile "tile_001" {
+    dimensions = [30.0, 30.0]
+    firing_profile = "medium"
+  }
+
+  Materials::CeramicTile "tile_002" {
+    dimensions = [40.0, 60.0]
+    firing_profile = "high"
+  }
+}
+----
+
+=== Internal references
+
+Link instances using `ref:`.
+
+[source,lml]
+----
+instances Production {
+  GlazeFormula "gloss_blue" { ... }
+
+  CeramicTile "tile_001" {
+    glaze = ref:(GlazeFormula.gloss_blue)
+  }
+}
+----
+
+=== Namespacing
+Class names are scoped to their model (e.g., `Materials::CeramicTile`).
+
+== Validation rules
+
+=== Attribute constraints
+1. Mandatory fields (`cardinality 1`) must be populated.
+2. Values must match the declared type (e.g., `float` for `thickness`).
+
+=== Class constraints
+1. Unique names within a model.
+2. Attribute names unique within a class.
+
+=== Reference validity
+- `ref:` must resolve to a valid instance path.
+- Circular references are invalid.
+
+== Examples
+
+=== Ceramic product definition
+[source,lml]
+----
+models Ceramics {
+  enum FiringProfile { values { "low", "medium", "high" } }
+
+  class CeramicTile {
+    attribute dimensions, float { cardinality 2 }  // [length, width]
+    attribute firing_profile, FiringProfile
+  }
+}
+
+instances Tiles {
+  Ceramics::CeramicTile "tile_001" {
+    dimensions = [30.5, 30.5]
+    firing_profile = "high"
+  }
+}
+----
+
+=== Glaze formula reference
+[source,lml]
+----
+instances Glazes {
+  GlazeFormula "blue_matte" {
+    components = ["silica", "cobalt"]
+  }
+
+  CeramicTile "tile_002" {
+    glaze = ref:(Glazes.blue_matte)
+  }
+}
+----
