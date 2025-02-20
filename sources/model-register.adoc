@@ -1,7 +1,6 @@
 = LutaML -- Model Register
 :edition: 1.0
 :doctype: standard
-:status: draft
 :docnumber: RS 3004
 :published-date: 2025-02-20
 :status: published

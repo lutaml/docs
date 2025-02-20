@@ -1,7 +1,6 @@
 = LutaML -- Path
 :edition: 1.0
 :doctype: standard
-:status: draft
 :docnumber: RS 3005
 :published-date: 2025-02-20
 :status: published
