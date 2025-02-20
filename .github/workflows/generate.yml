@@ -27,6 +27,10 @@ jobs:
       - name: Cache Metanorma assets
         uses: actions-mn/cache@v1
 
+      - uses: actions-mn/setup-flavors@main
+        with:
+          extra-flavors: ribose
+
       - name: Metanorma generate site
         uses: actions-mn/build-and-publish@v2
         with:
