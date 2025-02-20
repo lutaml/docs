@@ -34,8 +34,8 @@ jobs:
       - name: Metanorma generate site
         uses: actions-mn/build-and-publish@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           agree-to-terms: true
+          destination: gh-pages
 
   deploy:
     if: ${{ github.ref == 'refs/heads/main' }}
