@@ -23,27 +23,75 @@ London + \
 W1W 5PF + \
 United Kingdom
 
+== Introduction
+
+LutaML is a language for defining information models and instances of those
+information models.
+
+Traditionally, different languages have been developed to define information
+models for disparate purposes.
+
+* Data modeling languages are used to define and describe
+information models in a structured and formalized manner to document and
+interchange such model designs. Models defined in these formats are not meant to be
+directly usable in programming languages or serialization formats.
+
+* Schema languages are used to define serialization formats that can be used to
+serialize and deserialize data in a specific format. These formats are not
+meant to be directly usable in programming languages or information models.
+
+* Serialization formats are used to serialize and deserialize data according to
+some schema or in a "schema-less" model. These formats are not directly useable
+as information models.
+
+* Programming language constructs are used to define data structures that can be
+used in software applications. These constructs are not directly useable as
+information models or serialization formats nor communicated across systems.
+
+[example]
+====
+Traditionally, multiple layers of languages and tools are used to work with information models:
+
+* UML for defining information models
+* XML Schema or JSON Schema for defining serialization formats
+* Programming language implementations for both the models and their serialization mechanisms
+====
+
+LutaML is a single language that incorporates all the above roles of information
+modeling.
+
+The goal of LutaML is to provide a single language that can be used to:
+
+* define information models that are human-readable and interchangeable
+* specify serialization formats of information models
+* parse, validate, and utilize those information models in programming languages
+
+
 == Scope
 
-This document defines the syntax and semantics of the Luta Modeling Language
-(LutaML), a domain-specific language for defining data models and
-instances of data those data models.
+This document defines the core syntax and semantics of the Luta Modeling Language
+(LutaML), a domain-specific language for defining data models and instances of
+those data models.
+
+Other aspects of the LutaML language are defined in separate documents.
+
 
 [bibliography]
 == Normative references
+
 
 == Terms and definitions
 
 === information model
 
-representation of structured data
+representation of information in a structured manner
 
 === model
 
 abstract representation of a category of information
 
 NOTE: Commonly, a collection of classes, enums, and relationships defining a
-data structure.
+data structure, facilitating the organization of information and its metadata.
 
 === class
 
@@ -229,8 +277,8 @@ The solution to this problem is to define a single source of truth for the data
 model, and then automatically derive the serialization formats from the data
 model.
 
-Even with automatic derivation, there are additional concerns (which we shall
-address later):
+Even with automatic derivation, there are additional concerns (addressed in this
+document):
 
 * Versioning: How do we version the data model and the serialization formats?
 * Migration: How do we migrate data from one version of the data model to another?
@@ -481,7 +529,7 @@ features are needed.
 The core syntax of LutaML is based on the following constructs:
 
 * primitive values
-* command
+* declaration
 * argument
 * block
 * comment
@@ -498,49 +546,52 @@ LutaML supports the following primitive values:
 * `Integer` (e.g., `42`).
 * `Float` (e.g., `3.5`),
 * `Boolean` (e.g., `true`),
-* `Time_without_date` (e.g., `12:00:00`),
-* `Date-time` (e.g., `2024-01-01T12:00:00+00:00`)
-* `Time` (e.g., `2024-01-01T12:00:00+00:00`)
-* `Decimal` (e.g., `3.14159`)
+* `TimeWithoutDate` (e.g., `12:00:00`),
+* `DateTime` (e.g., `2024-01-01T12:00:00+00:00`),
+* `Time` (e.g., `2024-01-01T12:00:00+00:00`),
+* `Decimal` (e.g., `3.14159`),
 * `Hash` (e.g., `{ "key": "value" }`)
 
 
-=== Command, arguments and blocks
+=== Declaration, arguments and blocks
 
-A command is a keyword that represents an action or a declaration.
+A declaration is a keyword that represents an action or a statement.
 
 Syntax:
 
 [source,lml]
 ----
-{command} {*argument} {*block}
+{declaration} {*argument} {*block}
 ----
 
 Where,
 
-`{command}`:: the command keyword
+`{declaration}`:: the declaration keyword
 `{*argument}`:: zero or more arguments
 `{*block}`:: an optional blocks
 
 An argument is a string, which can be a primitive value or a reference to another
 object.
 
-A block is delimited by curly braces and provides a context for inner commands.
+A block is delimited by curly braces and provides a context for inner declarations.
 
 [example]
 ====
-This example shows the `class` command that takes an argument `Studio` to
+This example shows the `class` declaration that takes an argument `Studio` to
 represent the name of the class.
 
 [source,lml]
 ----
 class Studio
+// or
+class Studio {
+}
 ----
 ====
 
 [example]
 ====
-This example shows the `class` command that takes an argument `Studio` as its
+This example shows the `class` declaration that takes an argument `Studio` as its
 name with a block given, where it contains an attribute.
 
 [source,lml]
@@ -552,6 +603,8 @@ class Studio {
 ====
 
 === Comment
+
+==== General
 
 A comment is a line of text that is ignored by the processor.
 
@@ -607,7 +660,7 @@ class Ceramic {
 
 <1> A line beginning with `//` is a comment.
 <2> A line beginning with whitespaces followed by `//` is a comment.
-<3> A line with `//` is a tail comment: the text after `//` is a comment.
+<3> A line with `//` contains a tail comment: the text after `//` is a comment.
 ====
 
 
@@ -632,6 +685,10 @@ Where,
 ----
 /* This is a
 multi-line comment */
+/*
+  This is also a
+  multi-line comment
+*/
 ----
 ====
 
@@ -645,8 +702,6 @@ Syntax:
 [source,lml]
 ----
 definition {text}
-// or
-definition {block}
 ----
 
 Where,
@@ -662,18 +717,31 @@ definition "Non-reflective finish"
 ----
 ====
 
+
+Content within the block is considered to be multi-line textual content.
+No declarations are available within the block.
+
+[source,lml]
+----
+definition {block}
+----
+
+Where,
+
+`{text}`:: the description text
+`{block}`:: description text block
+
 [example]
 ====
 [source,lml]
 ----
 definition {
-  Non-reflective finish
+  Non-reflective finish.
+
+  A matte finish is a non-reflective finish that is often used in ceramics.
 }
 ----
 ====
-
-Content within the block is considered to be multi-line textual content.
-No commands are available within the block.
 
 [example]
 .Declaring a class named "Ceramic" with a description
@@ -698,27 +766,27 @@ class Ceramic {
 LutaML supports the following constructs.
 
 
-=== Model / Package
+=== Package
 
-The `models` construct is used to define a collection of classes and enums.
+The `package` construct is used to define a collection of classes and enums.
 
 Syntax:
 
 [source,lml]
 ----
-models {name} {block}
+package {name} {block}
 ----
 
 Where,
 
-`{name}`:: the name of the model package
+`{name}`:: the name of the package
 `{*block}`:: an optional block
 
 [example]
 ====
 [source,lml]
 ----
-models Ceramics {
+package Ceramics {
   enum FiringProfile { values { "low", "medium", "high" } }
 
   class CeramicTile {
@@ -729,12 +797,53 @@ models Ceramics {
 ----
 ====
 
-Within the block, the following commands are available:
+The package construct can be nested. You can also define other packages within a
+package, which helps in organizing related classes and enums.
+
+[example]
+====
+[source,lml]
+----
+class Dimension {
+  attribute length, float
+  attribute width, float
+  attribute height, float
+}
+
+package Ceramics {
+  class Ceramic {
+    attribute volume, float
+    attribute color, String
+
+    // Refers to outermost "root package"
+    attribute dimensions, Dimension
+
+    // Refers to "Material" package
+    attribute tiles, Material::CeramicTile { cardinality 0..n }
+  }
+
+  package Materials {
+    enum FiringProfile { values { "low", "medium", "high" } }
+
+    class CeramicTile {
+      // Refers to outermost "root package"
+      attribute dimensions, Dimension
+
+      // Refers to local "Materials" package
+      attribute firing_profile, FiringProfile
+    }
+  }
+}
+----
+====
+
+
+Within the block, the following declarations are available:
 
 * `class`
 * `enum`
-* `description`
-
+* `definition`
+* `package`
 
 === Class
 
@@ -759,13 +868,13 @@ Where,
 ----
 class Studio {
   attribute location, String {
-    description "Location of the studio"
+    definition "Location of the studio"
   }
   attribute potter, String {
-    description "Name of the potter"
+    definition "Name of the potter"
   }
   attribute kiln, String {
-    description "Type of kiln used"
+    definition "Type of kiln used"
   }
 }
 ----
@@ -777,16 +886,17 @@ class Studio {
 ----
 class TemperatureWithUnit {
   attribute value, Float {
-    description "Temperature value"
+    definition "Temperature value"
   }
   attribute unit, String {
-    description "Unit of temperature"
+    definition "Unit of temperature"
   }
 }
 ----
 ====
 
-Class attributes can be restricted to a specific set of values using the `values` command.
+Class attributes can be restricted to a specific set of values using the
+`values` declaration.
 
 [example]
 ====
@@ -816,51 +926,94 @@ class GlazeTechnique {
 ----
 ====
 
-It is possible to also define values with object instances.
+It is possible to also define values with model instances.
+See <<instance_representation>> for syntax to declare model instances.
 
 [example]
 ====
-// [source,ruby]
-// ----
-// class Ceramic < Lutaml::Model::Base
-include Lutaml::Model::Serializable
-//   attribute :type, :string
-//   attribute :firing_temperature, :integer
-// end
-
-// class CeramicCollection < Lutaml::Model::Base
-include Lutaml::Model::Serializable
-//   attribute :featured_piece,
-//             Ceramic,
-//             values: [
-//               Ceramic.new(type: "Porcelain", firing_temperature: 1300),
-//               Ceramic.new(type: "Stoneware", firing_temperature: 1200),
-//               Ceramic.new(type: "Earthenware", firing_temperature: 1000),
-//             ]
-// end
-// ----
+Given this class:
 
 [source,lml]
 ----
 class Ceramic {
-  attribute type, String
-  attribute firing_temperature, Integer
+  attribute type, String {
+    definition "Type of ceramic material"
+  }
+  attribute firing_temperature, Integer {
+    definition "Temperature at which the ceramic is fired"
+  }
 }
+----
 
+The values can be defined as:
+[source,lml]
+----
 class CeramicCollection {
   attribute featured_piece, Ceramic {
+    definition "Featured ceramic piece"
+
     values {
       instance Ceramic {
         type = "Porcelain"
         firing_temperature = 1300
+        definition {
+          Porcelain is a ceramic material made from kaolin clay.
+        }
       }
       instance Ceramic {
         type = "Stoneware"
         firing_temperature = 1200
+
+        definition {
+          Stoneware is a durable ceramic that is fired at high temperatures.
+        }
       }
       instance Ceramic {
         type = "Earthenware"
         firing_temperature = 1000
+        definition {
+          Earthenware is a porous ceramic that is fired at lower temperatures.
+        }
+      }
+    }
+  }
+}
+----
+
+Or
+
+[source,lml]
+----
+class CeramicCollection {
+  attribute featured_piece, Ceramic {
+    definition "Featured ceramic piece"
+
+    value {
+      instance Ceramic {
+        type = "Porcelain"
+        firing_temperature = 1300
+        definition {
+          Porcelain is a ceramic material made from kaolin clay.
+        }
+      }
+    }
+    value {
+      instance Ceramic {
+        type = "Stoneware"
+        firing_temperature = 1200
+
+        definition {
+          Stoneware is a durable ceramic that is fired at high temperatures.
+        }
+      }
+    }
+    value {
+      instance Ceramic {
+        type = "Earthenware"
+        firing_temperature = 1000
+        definition {
+          Earthenware is a porous ceramic that is fired at lower temperatures.
+        }
       }
     }
   }
@@ -868,10 +1021,11 @@ class CeramicCollection {
 ----
 ====
 
-Within the block, the following commands are available:
+Within the block, the following declarations are available:
 
 * `attribute`
-* `description`
+* `definition`
+* `values` / `value`
 
 
 === Attribute
@@ -896,7 +1050,7 @@ Where,
 [source,lml]
 ----
 attribute location, String {
-  description "Location of the studio"
+  definition "Location of the studio"
 }
 ----
 ====
@@ -906,7 +1060,7 @@ attribute location, String {
 [source,lml]
 ----
 attribute dimensions, Float {
-  description "Dimensions of the ceramic piece"
+  definition "Dimensions of the ceramic piece"
 }
 ----
 ====
@@ -1038,9 +1192,9 @@ class Glaze {
 
 
 
-Within the block, the following commands are available:
+Within the block, the following declarations are available:
 
-* `description`
+* `definition`
 * `values`
 * `cardinality`
 
@@ -1067,10 +1221,11 @@ Where,
 [source,lml]
 ----
 value "Porcelain" {
-  description "Ceramic material made from kaolin clay"
+  definition "Ceramic material made from kaolin clay"
 }
 ----
 ====
+
 
 === Enums
 
@@ -1081,30 +1236,34 @@ Syntax:
 
 [source,lml]
 ----
-enum {name} {block}
+enum {name} { // enum block
+  value {value-name} {value-block}
+}
 ----
 
 Where,
 
 `{name}`:: the name of the enum
 `{*block}`:: an optional block
+`{value-name}`:: the name of the value
+`{*value-block}`:: an optional block
 
 [example]
 ====
 [source,lml]
 ----
 enum GlazeTechnique {
+  definition "Techniques for glazing ceramics"
+
   value "Celadon" {
-    description "Technique that creates glaze in a pale green color"
+    definition "Technique that creates glaze in a pale green color"
   }
   value "Raku" {
-    description "Technique that creates a crackled glaze"
+    definition "Technique that creates a crackled glaze"
   }
   value "Majolica" {
-    description "Technique that creates a white glaze"
+    definition "Technique that creates a white glaze"
   }
-
-  description "Techniques for glazing ceramics"
 }
 ----
 ====
@@ -1120,10 +1279,40 @@ enum GlazeType {
 ----
 ====
 
-Within the block, the following commands are available:
+Enums accept instances as values as well.
+
+[example]
+====
+[source,lml]
+----
+class GlazeType {
+  attribute name, String
+  attribute description, String
+}
+
+enum GlazeTypes {
+  definition "Types of glaze finishes"
+
+  value "matte" {
+    instance {
+      name = "matte"
+      definition = "Non-reflective finish"
+    }
+  }
+  value "gloss" {
+    instance {
+      name = "gloss"
+      definition = "Reflective finish"
+    }
+  }
+}
+----
+====
+
+Within the block, the following declarations are available:
 
 * `value`
-* `description`
+* `definition`
 
 
 
@@ -1166,16 +1355,80 @@ class Studio {
   }
 }
 ----
+
+An instance of the class `Studio` will be serialized to XML as:
+
+[source,xml]
+----
+<studio>
+  <location>Paris</location>
+  <potter>Marie</potter>
+  <kiln>Electric</kiln>
+</studio>
+----
 ====
+
+Within the block, the following declarations are available:
+
+* `map_element`
+* `map_attribute`
+* `root`
+* `no_root`
 
 ==== Setting root element name
 
-Setting root element name:
+By default, the root name is set to a lowercased version of the class name.
 
 [source,lml]
 ----
 xml {
-  root "xml_element_name"
+  root "xml_element_name" <1>
+}
+----
+<1> The name of the root element.
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String
+  attribute potter, String
+  attribute kiln, String
+
+  xml {
+    root "local-studios"
+    map_element "location" { attribute location }
+    map_element "potter" { attribute potter }
+    map_attribute "kiln" { attribute kiln }
+  }
+}
+----
+
+An instance of the class `Studio` will be serialized to XML as:
+
+[source,xml]
+----
+<local-studios>
+  <location>Paris</location>
+  <potter>Marie</potter>
+  <kiln>Electric</kiln>
+</local-studios>
+----
+====
+
+
+==== Omitting root element
+
+By default, there exists a root element in a model represented in XML. In cases
+where the root element is not to be present, it can be omitted.
+
+Syntax:
+
+[source,lml]
+----
+xml {
+  no_root
 }
 ----
 
@@ -1183,27 +1436,440 @@ xml {
 ====
 [source,lml]
 ----
-xml {
-  root "studio"
+class Studio {
+  attribute location, String
+  attribute potter, String
+  attribute kiln, String
+
+  xml {
+    no_root
+    map_element "location" { attribute location }
+    map_element "potter" { attribute potter }
+    map_attribute "kiln" { attribute kiln }
+  }
 }
+----
+
+An instance of the class `Studio` will be serialized to XML as:
+
+[source,xml]
+----
+<location>Paris</location>
+<potter>Marie</potter>
+<kiln>Electric</kiln>
 ----
 ====
 
 
-Within the block, the following commands are available:
+==== map_element
 
-* `map_element`
-* `map_attribute`
+The `map_element` construct is used to map an XML element to a model attribute.
+
+Syntax:
+
+[source,lml]
+----
+map_element {name} {block}
+----
+
+Where,
+
+`{name}`:: the name of the element
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String
+
+  xml {
+    map_element "geo-location" { attribute location }
+  }
+}
+----
+
+[source,xml]
+----
+<studio>
+  <geo-location>Paris</geo-location>
+</studio>
+----
+====
+
+In `map_element`, if the target attribute is a LutaML model, the newly specified
+element name overrides the defined `root` name of the model.
+
+[example]
+====
+----
+class LocationElement {
+  attribute location, String
+
+  xml do
+    root "location"
+    map_element "place" { attribute location }
+  end
+}
+
+class Studio {
+  attribute location, LocationElement
+
+  xml {
+    root "studio"
+    map_element "geo" { attribute location }
+  }
+}
+----
+
+[source,xml]
+----
+<studio>
+  <geo><place>Paris</place></geo>
+</studio>
+----
+====
+
+
+==== map_attribute
+
+The `map_attribute` construct is used to map an XML attribute to a model attribute.
+
+Syntax:
+
+[source,lml]
+----
+map_attribute {name} {block}
+----
+
+Where,
+
+`{name}`:: the name of the attribute
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String
+  attribute identifier, String
+  attribute kiln, String
+
+  xml {
+    map_element "geo-location" { attribute location }
+    map_attribute "identifier" { attribute identifier }
+    map_attribute "kiln" { attribute kiln }
+  }
+}
+----
+
+[source,xml]
+----
+<studio identifier="1234" klin="Electric">
+  <geo-location>Paris</geo-location>
+</studio>
+----
+====
+
+
+==== map_content
+
+The `map_content` construct is used to map the content of an XML element to a model attribute.
+
+Syntax:
+
+[source,lml]
+----
+map_content {block}
+----
+
+Where,
+
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String
+
+  xml {
+    map_content { attribute location }
+  }
+}
+----
+
+[source,xml]
+----
+<studio>Paris</studio>
+----
+====
+
+==== Namespaces
+
+Namespaces can be defined in the XML serialization.
+
+The `namespace` construct is used to define a namespace in the element.
+
+* In XML, this namespace declares the "default namespace" for all unnamespaced elements within this element.
+* Attributes are not affected by the namespace.
+* A namespace URI is optional, allowing for flexibility in definition.
+
+Syntax:
+
+[source,lml]
+----
+namespace {prefix} {uri}
+----
+
+Where,
+
+`{prefix}`:: the namespace prefix
+`{uri}`:: the namespace URI (optional)
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String
+
+  xml {
+    namespace "geo" "http://example.com/geo"
+    map_element "location" { attribute location }
+  }
+}
+----
+
+[source,xml]
+----
+<studio xmlns:geo="http://example.com/geo">
+  <location>Paris</location>
+</studio>
+----
+====
 
 
 
-=== JSON
 
-LutaML supports the serialization of data models to JSON.
+=== Key-value formats
+
+Key-value formats are serialization formats that represent data as a collection
+of key-value pairs.
+
+These include YAML, JSON, TOML and others.
+
+TODO: General behavior
+
+==== map
+
+The `map` construct is used to map a collection of elements to a model attribute.
+
+Syntax:
+
+[source,lml]
+----
+map {block}
+----
+
+Where,
+
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String
+
+  yaml {
+    map "location" { attribute location }
+  }
+}
+----
+
+[source,yaml]
+----
+- location: Paris
+- location: Berlin
+- location: London
+----
+====
+
+
+
+=== Collection mappings
+
+==== map_key
+
+WARNING: Only for key-value formats.
+
+The `map_key` construct is used to map the key of a serialization object to a model attribute.
+
+Syntax:
+
+[source,lml]
+----
+map_key {name} {block}
+----
+
+Where,
+
+`{name}`:: the name of the key
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String
+}
+
+class StudioCollection < Collection {
+  instances Studio
+
+  yaml {
+    map_key "location" { attribute location }
+  }
+}
+----
+
+[source,yaml]
+----
+- 01_paris: Paris
+- 02_berlin: Berlin
+- 03_london: London
+----
+====
+
+
+==== map_value
+
+WARNING: Only for key-value formats.
+
+The `map_value` construct is used to map the value of a serialization object to a model attribute.
+
+Syntax:
+
+[source,lml]
+----
+map_value {name} {block}
+----
+
+Where,
+
+`{name}`:: the name of the value
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String
+}
+
+class StudioCollection < Collection {
+  instances Studio
+
+  yaml {
+    map_key "location" { attribute location }
+    map_value "location" { attribute location }
+  }
+}
+----
+
+[source,yaml]
+----
+- 01_paris:
+    location: Paris
+- 02_berlin:
+    location: Berlin
+- 03_london:
+    location: London
+----
+====
+
 
 
 
 == Instance representation
+
+=== Instance
+
+An `instance` construct is used to define an instance of a class.
+
+To assign values to attributes, the attribute name is followed by an equal sign
+and the value.
+
+Syntax:
+
+[source,lml]
+----
+instance {name} {block}
+----
+
+Where,
+
+`{name}`:: the name of the instance
+`{*block}`:: an optional block
+
+[example]
+====
+[source,lml]
+----
+class Studio {
+  attribute location, String
+  attribute potter, String
+  attribute kiln, String
+}
+
+instance "Studio" {
+  location = "Paris"
+  potter = "Marie"
+  kiln = "Electric"
+  definition {
+    Marie's studio in Paris.
+  }
+}
+----
+====
+
+[example]
+====
+[source,lml]
+----
+class CeramicTile {
+  attribute dimensions, Float { cardinality 2 }
+  attribute firing_profile, FiringProfile
+  definition {
+    Types of ceramic tiles.
+  }
+}
+
+instance "square" CeramicTile {
+  dimensions = [30.5, 30.5]
+  firing_profile = "high"
+
+  definition {
+    A square ceramic tile used for various applications.
+  }
+}
+----
+====
+
+Within the block, the following declarations are available:
+
+* attributes of the class
+* `definition`
+* `values`
+
+
 
 === Instance collection
 
@@ -1260,65 +1926,9 @@ instances "Tiles" {
 ----
 ====
 
-Within the block, the following commands are available:
+Within the block, the following declarations are available:
 
 * `instance`
-
-== Instance
-
-An `instance` construct is used to define an instance of a class.
-
-Syntax:
-
-[source,lml]
-----
-instance {name} {block}
-----
-
-Where,
-
-`{name}`:: the name of the instance
-`{*block}`:: an optional block
-
-[example]
-====
-[source,lml]
-----
-class Studio {
-  attribute location, String
-  attribute potter, String
-  attribute kiln, String
-}
-
-instance "Studio" {
-  location = "Paris"
-  potter = "Marie"
-  kiln = "Electric"
-}
-----
-====
-
-[example]
-====
-[source,lml]
-----
-class CeramicTile {
-  attribute dimensions, Float { cardinality 2 }
-  attribute firing_profile, FiringProfile
-}
-
-instance "square" CeramicTile {
-  dimensions = [30.5, 30.5]
-  firing_profile = "high"
-}
-----
-====
-
-Within the block, the following commands are available:
-
-* attributes of the class
-* `description`
-
 
 
 
