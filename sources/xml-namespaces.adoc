@@ -1,0 +1,1340 @@
+= LutaML -- XML Namespaces
+:edition: 1.0
+:doctype: standard
+:docnumber: RS 3006
+:published-date: 2025-02-22
+:status: published
+:security: unrestricted
+:committee: LutaML
+:committee-type: technical
+:imagesdir: images
+:mn-document-class: ribose
+:mn-output-extensions: xml,html,pdf,rxl
+:fullname: Ronald Tse
+:surname: Tse
+:givenname: Ronald
+:affiliation: Ribose
+:local-cache-only:
+:data-uri-image:
+:publisher: Ribose Inc.
+:pub-address: 167-169 Great Portland Street + \
+5th Floor + \
+London + \
+W1W 5PF + \
+United Kingdom
+
+
+== Introduction
+
+This document specifies how lutaml-model implements XML namespace handling,
+including namespace inheritance, prefix resolution, and attribute namespace
+management. It serves as both a technical specification and a practical guide
+for developers using lutaml-model's XML namespace capabilities.
+
+== Scope
+
+This document specifies:
+
+* XML namespace handling in lutaml-model
+* Namespace inheritance and resolution rules
+* Prefix management and attribute namespace handling
+* Best practices and common patterns for namespace usage
+
+== Normative references
+
+* [[[w3c-xml11, W3C TR/xml11]]]
+
+== Terms and definitions
+
+=== xml namespace
+
+method to avoid element name conflicts by qualifying element and attribute names
+with namespace IRIs
+
+=== default namespace
+
+namespace that applies to unprefixed element names
+
+=== prefixed namespace
+
+namespace that applies to qualified names
+
+=== namespace scope
+
+range of elements where a namespace declaration is valid, starting from the declaring element and including all child elements
+
+
+== XML namespace fundamentals
+
+The W3C XML Namespaces 1.0 specification defines the following key concepts for
+XML namespace handling:
+
+* Namespace declarations using the `xmlns` attribute
+* Default namespaces that apply to unprefixed elements
+* Prefixed namespaces that apply to qualified names
+* Scoping rules for namespace declarations
+
+The W3C specification defines these core rules for namespace inheritance:
+
+. Element names inherit the namespace specified by an `xmlns` attribute on themselves or the nearest ancestor element
+. Unprefixed attributes do not inherit any namespace, even with a default namespace declaration
+. Prefixed attributes use the namespace associated with their prefix
+. Namespace declarations remain valid from the declaring element through all descendants
+
+
+== Namespace operations
+
+=== Model-level
+
+==== Namespace definition
+
+When a namespace is set at the model level, it becomes the default namespace for
+that model and all its unnamespaced inner elements:
+
+[source,ruby]
+----
+xml do
+  namespace "{namespace-uri}" # Sets default namespace
+end
+----
+
+Where,
+
+`namespace-uri`:: The URI of the namespace to be used.
+
+==== Prefix declaration
+
+The prefix is optional.
+
+Prefixes can be declared at the model level to be used by inner elements.
+
+[source,ruby]
+----
+xml do
+  # Mandatory prefix declaration
+  prefix "{prefix}"
+
+  # Declares optional prefix when needed
+  prefix "{optional-prefix}", optional: true
+end
+----
+
+Where,
+
+`prefix`:: The prefix to be used for the element.
+`optional-prefix`:: (optional) The prefix to be used for the element when needed.
+
+
+=== Mapping-level
+
+==== Element mapping
+
+For XML elements that need to be mapped to model attributes, the `map_element`
+is used to specify how XML elements correspond to attributes in the model.
+
+[source,ruby]
+----
+xml do
+  # ... model-level settings
+  map_element "{xml-element-name}",
+    to: {attribute-name},
+    namespace: {namespace}, # Optional
+    prefix: {prefix}, # Optional
+end
+----
+
+Where,
+
+`xml-element-name`:: The name of the element in the XML.
+`attribute-name`:: The name of the attribute in the model.
+`namespace`:: (optional) The namespace to be applied to the element.
+`prefix`:: (optional) The prefix to be used for the element.
+
+The behavior is as follows:
+
+. If the target model attribute has no namespace, it is treated as an unprefixed
+element, meaning that adopts the current namespace.
+
+. If the target model attribute has a namespace:
+
+.. If the target model attribute namespace is the same as the parent element,
+then it is identical to the unprefixed element.
+
+.. If the target model attribute namespace is different from the parent element:
+
+... If the target element is to be unprefixed and inherits the namespace from
+the parent element (which causes inner prefixing), then the mapping needs to
+specify `namespace: inherit` to alter the target model's namespace. The element
+will receive an `xmlns` declaration for the target model attribute namespace at
+the target element (not the parent element).
+
+... If the target element is to be unprefixed with an empty namespace, then the
+mapping needs to specify `namespace: nil` to clear the namespace. The element
+will be an unprefixed element.
+
+... If the target element is to be prefixed, the prefix must be either declared
+in the mapping (through mapping-level `prefix:`) or the target model (through
+model-level `prefix`). The namespace declaration with prefix will be applied to
+the parent element and the target element will be prefixed.
+
+
+==== Attribute mapping
+
+For XML attributes that need to be mapped to model attributes, the `map_attribute`
+is used to specify how XML attributes correspond to attributes in the model.
+
+[source,ruby]
+----
+xml do
+  # ... model-level settings
+  map_attribute "{xml-attribute-name}",
+    to: {attribute-name},
+    namespace: {namespace}, # Optional
+    prefix: {prefix}, # Optional
+end
+----
+
+Where,
+
+`xml-attribute-name`:: The name of the attribute in the XML.
+`attribute-name`:: The name of the attribute in the model.
+`namespace`:: (optional) The namespace to be applied to the attribute.
+`prefix`:: (optional) The prefix to be used for the attribute.
+
+The behavior is as follows:
+
+. If the target attribute model has no namespace:
+
+.. If the target XML attribute is to be unprefixed, nothing needs to be done.
+
+.. If the target XML attribute is to be a prefixed XML attribute, the namespace
+and the prefix must be provided either by the target attribute model (through
+model-level `namespace` and `prefix`) or the mapping (through mapping-level
+`namespace` and `prefix`). The namespace declaration with prefix will be applied
+to the XML element that contains the attribute, and the XML attribute will be
+prefixed.
+
+. If the target attribute has a namespace:
+
+.. If it is identical to the parent element's namespace:
+
+... If it is to be an unprefixed XML attribute:
+
+.... The namespace has to be cleared (see <<attribute-namespace>> for details).
+Then `namespace: nil` must be specified in the mapping.
+
+... If it is to be a prefixed XML attribute:
+
+.... Either the mapping or the target attribute must provide the prefix. Then the
+namespace declaration with prefix will be applied to the XML attribute. This
+prefixed namespace will be declared at the parent XML element.
+
+
+.. If it is different from the parent element's namespace:
+
+... If it is to be an unprefixed XML attribute:
+
+.... The namespace has to be cleared (see <<attribute-namespace>> for details).
+Then `namespace: nil` must be specified in the mapping.
+
+... If it is to be a prefixed XML attribute:
+
+.... The namespace declaration should be set to `namespace: :inherit` to inherit
+the parent model's namespace. The prefixed namespace will be declared at the
+parent XML element. Either the mapping or the target attribute must provide the
+prefix (or the optional `prefix`).
+
+
+
+== Scenarios
+
+=== Element namespace handling
+
+==== Namespace inheritance
+
+When the attribute's model shares the same namespace, it inherits the
+namespace from the parent without needing prefixes.
+
+[source,ruby]
+----
+module Ceramic
+  class Ceramic < Lutaml::Model::Serializable
+    attribute :category, Category # Same namespace
+
+    xml do
+      namespace "http://example.com/ceramic"
+      map_element "category", to: :category # No prefix needed
+    end
+  end
+
+  class Category < Lutaml::Model::Serializable
+    xml do
+      namespace "http://example.com/ceramic"
+    end
+  end
+end
+----
+
+Results in:
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic">
+  <category>Ornamental</category> <!-- Same namespace, no prefix -->
+</ceramic>
+----
+
+==== Different namespaces
+
+When the attribute's model does not share the same namespace, the attribute will
+be under a different namespace.
+
+[source,ruby]
+----
+module Ceramic
+  class Ceramic < Lutaml::Model::Serializable
+    attribute :potter, Potter # Different namespace
+
+    xml do
+      namespace "http://example.com/ceramic"
+      map_element "potter", to: :potter
+    end
+  end
+
+  class Potter < Lutaml::Model::Serializable
+    attribute :name, :string
+
+    xml do
+      namespace "http://example.com/potter"
+      map_element "name", to: :name
+    end
+  end
+end
+----
+
+Results in:
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic">
+  <potter xmlns="http://example.com/potter">
+    <name>Alice Perrin</name>
+  </potter>
+</ceramic>
+----
+
+
+==== Different namespaces with prefix
+
+When the attribute's model does not share the same namespace, it can be given
+a prefix at the parent level to reference the different namespace.
+
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :potter, Potter # Different namespace
+
+  xml do
+    namespace "http://example.com/ceramic"
+    map_element "potter", to: :potter, prefix: "p"
+  end
+end
+
+class Potter < Lutaml::Model::Serializable
+  attribute :name, :string
+
+  xml do
+    namespace "http://example.com/potter"
+    map_element "name", to: :name
+  end
+end
+----
+
+Results in:
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic"
+         xmlns:p="http://example.com/potter">
+  <p:potter>
+    <p:name>Alice Perrin</p:name>
+  </p:potter>
+</ceramic>
+----
+
+
+=== Attribute namespace handling
+
+==== General
+
+Attributes differ from Elements when namespaces are involved.
+
+[quote, <<w3c-xml11>>]
+____
+A default namespace declaration applies to all unprefixed element names within
+its scope. Default namespace declarations do not apply directly to attribute
+names; the interpretation of unprefixed attributes is determined by the element
+on which they appear.
+
+If there is a default namespace declaration in scope, the expanded name
+corresponding to an unprefixed element name has the IRI of the default namespace
+as its namespace name. If there is no default namespace declaration in scope,
+the namespace name has no value. The namespace name for an unprefixed attribute
+name always has no value. In all cases, the local name is local part (which is
+of course the same as the unprefixed name itself).
+____
+
+A namespaced attribute in XML requires a prefix as per <<w3c-xml11>>.
+
+It is also important to understand that the interpretation of unprefixed
+attributes is determined by the element on which they appear.
+
+An attribute when assigned a type that is a model can have multiple scenarios:
+
+. Attribute has no namespace
+.. No namespace, no prefix
+.. Adopt the model's namespace if the parent element is under a prefixed namespace
+.. Add a namespace, with or without prefix
+
+. Same namespace as the model that includes it
+.. Use as an unprefixed attribute (clear namespace)
+.. Retain that namespace, with prefix
+.. Change that namespace, with prefix
+
+. Different namespace from the model that includes it
+.. Retain that namespace, with prefix
+.. Change that namespace, to another or the current namespace, with prefix
+.. Clear that namespace and use it as an unprefixed attribute
+
+==== Scenario 1: Attribute has no namespace
+
+==== Scenario 1.1: No namespace, no prefix
+
+When the attribute has no namespace, and the parent mapping does not have
+specify a namespace, the attribute is an unprefixed attribute.
+
+[example]
+====
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :code, String
+
+  xml do
+    namespace "http://example.com/ceramic"
+    map_attribute "code", to: :code # No namespace, no prefix
+  end
+end
+
+class CommonCode < Lutaml::Model::Serializable
+  attribute :code, String
+
+  xml do
+    map_attribute "code", to: :code
+  end
+end
+----
+
+Corresponding XML:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic" code="Value">
+----
+
+==== Scenario 1.2: Adopt the model's namespace if the parent element is under a prefixed namespace
+
+When the attribute has no namespace, it adopts the model's namespace if the
+parent element is under a prefixed namespace.
+
+Syntax:
+
+[source,ruby]
+----
+xml do
+  namespace {namespace}
+  prefix {prefix}
+
+  map_attribute {xml-attribute-name}, to: {attribute-name}
+  # Add more attributes as necessary
+end
+----
+
+Where,
+
+`namespace`:: The namespace to be applied to the element.
+`prefix`:: The prefix to be used for the element.
+`xml-attribute-name`:: The name of the attribute in the XML.
+`attribute-name`:: The name of the attribute in the model.
+
+[example]
+====
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :code, String
+
+  xml do
+    root "ceramic"
+    namespace "http://example.com/ceramic"
+    prefix "c"
+    map_attribute "code", to: :code
+  end
+end
+
+class CommonCode < Lutaml::Model::Serializable
+  attribute :code, String
+
+  xml do
+    root "common_code"
+    namespace "http://example.com/common"
+    map_attribute "code", to: :code
+  end
+end
+----
+
+Corresponding XML:
+
+[source,xml]
+----
+<c:ceramic xmlns:c="http://example.com/ceramic" c:code="Value">
+----
+====
+
+==== Scenario 1.3: Add a namespace, with or without prefix
+
+When the attribute has no namespace, it can be given a namespace and a prefix.
+
+Syntax:
+
+[source,ruby]
+----
+xml do
+  # ...
+  map_attribute "xml-attribute-name",
+    to: {attribute-name},
+    prefix: {prefix}, # Optional
+    namespace: {namespace}
+end
+----
+
+Where,
+
+`xml-attribute-name`:: The name of the attribute in the XML.
+`attribute-name`:: The name of the attribute in the model.
+`prefix`:: (optional) The prefix to be used for the attribute.
+`namespace`:: The namespace to be applied to the attribute.
+
+[example]
+====
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :code, String
+
+  xml do
+    root "ceramic"
+    namespace "http://example.com/ceramic"
+    map_attribute "code", to: :code, prefix: "c", namespace: "http://example.com/common"
+  end
+end
+
+class CommonCode < Lutaml::Model::Serializable
+  attribute :code, String
+
+  xml do
+    root "common_code"
+    namespace "http://example.com/common"
+    map_attribute "code", to: :code
+  end
+end
+----
+
+Corresponding XML:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/common"
+          xmlns:c="http://example.com/common" c:code="Value">
+----
+
+==== Scenario 2: Same namespace as the model that includes it
+
+When the attribute is a model that has a namespace, and the parent element has
+the same namespace, the attribute inherits that namespace.
+
+==== Scenario 2.1: Use as an unprefixed attribute (clear namespace)
+
+When the attribute has no namespace, it is used as an unprefixed attribute.
+
+[example]
+====
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :code, CommonCode
+
+  xml do
+    root "ceramic"
+    namespace "http://example.com/ceramic"
+    map_attribute "code", to: :code
+  end
+end
+
+class CommonCode < Lutaml::Model::Serializable
+  attribute :code, String
+
+  xml do
+    root "common_code"
+    namespace "http://example.com/ceramic" # Same namespace as parent
+    map_attribute "code", to: :code # Notice that the XML is an unprefixed attribute.
+  end
+end
+----
+
+Notice that the XML is an unprefixed attribute.
+
+Corresponding XML:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic" code="Value">
+----
+====
+
+
+==== Scenario 2.2: Retain that namespace, with prefix
+
+When the attribute model has a namespace and you want to retain that namespace,
+the namespace must be specified.
+
+Syntax:
+
+[source,ruby]
+----
+xml do
+  # ...
+  prefix "c", optional: true
+  map_attribute "code", to: :code, namespace: :inherit
+end
+----
+
+[example]
+====
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :code, CommonCode
+
+  xml do
+    root "ceramic"
+    namespace "http://example.com/ceramic"
+    prefix "c", optional: true
+    map_attribute "code", to: :code, namespace: :inherit
+  end
+end
+
+class CommonCode < Lutaml::Model::Serializable
+  attribute :code, String
+
+  xml do
+    root "common_code"
+    namespace "http://example.com/ceramic" # Same namespace as parent
+    map_attribute "code", to: :code
+  end
+end
+----
+
+Corresponding XML:
+
+[source,xml]
+----
+<c:ceramic xmlns="http://example.com/ceramic" c:code="Value">
+----
+====
+
+==== Scenario 2.3: Change that namespace, with prefix
+
+When the attribute model has a namespace and you want to change that namespace,
+the new namespace and its prefix must be specified.
+
+Syntax:
+
+[source,ruby]
+----
+xml do
+  # ...
+  prefix "d", optional: true
+  map_attribute "code", to: :code, namespace: {namespace}
+end
+----
+
+[example]
+====
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :code, CommonCode
+
+  xml do
+    root "ceramic"
+    namespace "http://example.com/ceramic"
+    # Change to different namespace
+    map_attribute "code", to: :code, prefix: "d", namespace: "http://example.com/common"
+  end
+end
+
+class CommonCode < Lutaml::Model::Serializable
+  attribute :code, String
+
+  xml do
+    root "common_code"
+    namespace "http://example.com/ceramic" # Same namespace as parent
+    map_attribute "code", to: :code
+  end
+end
+----
+
+Corresponding XML:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic"
+  xmlns:d="http://example.com/common" d:code="Value">
+----
+====
+
+
+
+==== Scenario 3: Different namespace from the model that includes it
+
+This is the case where the attribute is a model that has a namespace different
+from the parent element, the attribute must be given a prefix.
+
+
+==== Scenario 3.1: Retain that namespace, with prefix
+
+When the attribute has a different namespace from the model that includes it, it
+must be given a prefix.
+
+Syntax:
+
+[source,ruby]
+----
+map_attribute "xml-attribute-name", to: {attribute-name}, prefix: {prefix}
+----
+
+Where,
+
+`xml-attribute-name`:: The name of the attribute in the XML.
+`attribute-name`:: The name of the attribute in the model.
+`prefix`:: The prefix to be used for the attribute.
+
+[example]
+====
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :id, Identifier
+
+  xml do
+    namespace "http://example.com/ceramic"
+    map_attribute "id", to: :id, prefix: "c"
+  end
+end
+----
+
+Results in:
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic"
+         xmlns:c="http://example.com/identifier"
+         c:id="1234">
+----
+====
+
+==== Scenario 3.2: Change that namespace, with prefix
+
+When the attribute has a different namespace from the model that includes it, it
+can be given a different namespace and a prefix.
+
+Syntax:
+
+[source,ruby]
+----
+map_attribute "xml-attribute-name", to: {attribute-name}, prefix: {prefix}, namespace: {namespace}
+----
+
+Where,
+`xml-attribute-name`:: The name of the attribute in the XML.
+`attribute-name`:: The name of the attribute in the model.
+`prefix`:: The prefix to be used for the attribute.
+`namespace`:: The namespace to be applied to the attribute.
+
+[example]
+====
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :code, CommonCode
+
+  xml do
+    namespace "http://example.com/ceramic"
+    # Explicit namespace and prefix
+    map_attribute "code", to: :code, prefix: "d", namespace: "http://example.com/common"
+  end
+end
+----
+
+Results in:
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic"
+         xmlns:d="http://example.com/common"
+         d:code="ABC">
+----
+====
+
+
+==== Scenario 3.3: Clear that namespace and use it as an unprefixed attribute
+
+When the attribute has a different namespace from the model that includes it, it
+can be cleared to use as an unprefixed attribute.
+
+Syntax:
+
+[source,ruby]
+----
+xml do
+  # ...
+  map_attribute "xml-attribute-name", to: {attribute-name}, namespace: nil
+end
+----
+
+Where,
+
+`xml-attribute-name`:: The name of the attribute in the XML.
+`attribute-name`:: The name of the attribute in the model.
+
+[example]
+====
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :code, CommonCode
+
+  xml do
+    root "ceramic"
+    namespace "http://example.com/ceramic"
+    map_attribute "code", to: :code, namespace: nil
+  end
+end
+
+class CommonCode < Lutaml::Model::Serializable
+  attribute :code, String
+
+  xml do
+    root "common_code"
+    namespace "http://example.com/identifier"
+    map_attribute "code", to: :code
+  end
+end
+----
+
+Corresponding XML:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic" code="Value">
+----
+====
+
+
+
+
+== Namespace scenarios
+
+=== Default namespace inheritance
+
+When elements share the same namespace, they inherit the namespace from their parent without needing prefixes.
+
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :category, Category
+
+  xml do
+    namespace "http://example.com/ceramic"
+    map_element "category", to: :category # No prefix needed
+  end
+end
+
+class Category < Lutaml::Model::Serializable
+  xml do
+    namespace "http://example.com/ceramic" # Same namespace as parent
+  end
+end
+----
+
+Results in:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic">
+  <category>Ornamental</category>
+</ceramic>
+----
+
+=== Explicit prefix declaration
+
+When elements use different namespaces, prefixes must be explicitly declared.
+
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :potter, Potter
+
+  xml do
+    namespace "http://example.com/ceramic"
+    map_element "potter", to: :potter, prefix: "p" # Different namespace needs prefix
+  end
+end
+
+class Potter < Lutaml::Model::Serializable
+  xml do
+    namespace "http://example.com/potter"
+  end
+end
+----
+
+Results in:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic"
+         xmlns:p="http://example.com/potter">
+  <p:potter>
+    <p:name>Alice Perrin</p:name>
+  </p:potter>
+</ceramic>
+----
+
+=== Attribute namespace handling
+
+Attributes have special namespace handling rules:
+1. Unprefixed attributes have no namespace
+2. Prefixed attributes must declare their namespace
+
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :type, :string
+  attribute :id, Identifier
+
+  xml do
+    namespace "http://example.com/ceramic"
+    map_attribute "type", to: :type  # No namespace
+    map_attribute "id", to: :id, prefix: "c"  # Different namespace
+  end
+end
+----
+
+Results in:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic"
+         xmlns:c="http://example.com/identifier"
+         type="Fine Porcelain"
+         c:id="1234">
+----
+
+=== Nested namespace changes
+
+Child elements can override their parent's namespace and establish a new default namespace for their subtree.
+
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :production_site, ProductionSite
+
+  xml do
+    namespace "http://example.com/ceramic"
+    map_element "production_site", to: :production_site
+  end
+end
+
+class ProductionSite < Lutaml::Model::Serializable
+  attribute :name, :string
+  attribute :website, SiteUrl
+
+  xml do
+    namespace "http://example.com/production" # Different from parent
+    map_element "name", to: :name
+    map_element "website", to: :website, prefix: "s"
+  end
+end
+----
+
+Results in:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic">
+  <production_site xmlns="http://example.com/production"
+                   xmlns:s="http://example.com/url">
+    <name>Bernardaud Factory</name>
+    <s:website>http://www.bernardaud.com</s:website>
+  </production_site>
+</ceramic>
+----
+
+=== Multiple namespace declarations
+
+Complex elements may need to declare multiple namespaces when they reference elements from different namespaces.
+
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :id, Identifier
+  attribute :potter, Potter
+  attribute :category, Category
+
+  xml do
+    namespace "http://example.com/ceramic"
+    map_attribute "id", to: :id, prefix: "c"
+    map_element "potter", to: :potter, prefix: "p"
+    map_element "category", to: :category # Same namespace
+  end
+end
+----
+
+Results in:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic"
+         xmlns:c="http://example.com/identifier"
+         xmlns:p="http://example.com/potter"
+         c:id="1234">
+  <p:potter>
+    <p:name>Alice Perrin</p:name>
+  </p:potter>
+  <category>Ornamental</category>
+</ceramic>
+----
+
+=== Collection element namespaces
+
+Collections maintain proper namespace handling for each element.
+
+[source,ruby]
+----
+class ProductionSite < Lutaml::Model::Serializable
+  attribute :glazes_produced, :string, collection: true
+
+  xml do
+    namespace "http://example.com/production"
+    map_element "glazes_produced", to: :glazes_produced
+  end
+end
+----
+
+Results in:
+
+[source,xml]
+----
+<production_site xmlns="http://example.com/production">
+  <glazes_produced>Celadon</glazes_produced>
+  <glazes_produced>Crystalline</glazes_produced>
+</production_site>
+----
+
+
+== Advanced namespace features
+
+=== Automatic namespace merging
+
+When multiple prefixes map to the same namespace URI, lutaml-model automatically merges them to use a single prefix declaration. This optimization reduces XML verbosity and improves namespace management.
+
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :id, Identifier
+  attribute :code, CommonCode
+
+  xml do
+    namespace "http://example.com/ceramic"
+    map_attribute "id", to: :id, prefix: "c", namespace: "http://example.com/common"
+    map_attribute "code", to: :code, prefix: "d", namespace: "http://example.com/common"
+  end
+end
+----
+
+Results in a single prefix for the common namespace:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic"
+         xmlns:c="http://example.com/common"
+         c:id="1234"
+         c:code="ABC">
+----
+
+=== Polymorphic collection mapping
+
+Polymorphic collections are automatically handled by preserving each element's
+namespace while maintaining collection semantics.
+
+[source,ruby]
+----
+class CeramicCollection < Lutaml::Model::Serializable
+  attribute :items, Ceramic, collection: true # Can contain any subclass of Ceramic
+
+  xml do
+    namespace "http://example.com/collection"
+    map_element "items", to: :items
+  end
+end
+
+# Different ceramic types with their own namespaces
+class Vase < Ceramic
+  xml do
+    namespace "http://example.com/vase"
+  end
+end
+
+class Bowl < Ceramic
+  xml do
+    namespace "http://example.com/bowl"
+  end
+end
+----
+
+Collection with mixed types preserves individual namespaces:
+
+[source,xml]
+----
+<collection xmlns="http://example.com/collection">
+  <items>
+    <vase xmlns="http://example.com/vase">...</vase>
+    <bowl xmlns="http://example.com/bowl">...</bowl>
+  </items>
+</collection>
+----
+
+=== Namespace prefix conflict resolution
+
+Prefix conflicts are automatically resolved by generating unique prefixes when
+the same prefix is requested for different namespaces:
+
+[source,ruby]
+----
+class Ceramic < Lutaml::Model::Serializable
+  attribute :id, Identifier
+  attribute :metadata, MetaData
+
+  xml do
+    namespace "http://example.com/ceramic"
+    map_attribute "id", to: :id, prefix: "meta", namespace: "http://example.com/identifier"
+    map_element "metadata", to: :metadata, prefix: "meta", namespace: "http://example.com/metadata"
+  end
+end
+----
+
+Automatically resolves to unique prefixes:
+
+[source,xml]
+----
+<ceramic xmlns="http://example.com/ceramic"
+         xmlns:meta1="http://example.com/identifier"
+         xmlns:meta2="http://example.com/metadata"
+         meta1:id="1234">
+  <meta2:metadata>...</meta2:metadata>
+</ceramic>
+----
+
+
+[appendix]
+== Full example
+
+[source,ruby]
+----
+module Common
+  # Simple content, unique namespace
+  class Identifier < Lutaml::Model::Serializable
+    attribute :name, :string
+
+    xml do
+      root "identifier"
+      map_content to: :name
+      namespace "http://example.com/identifier"
+    end
+  end
+
+  # Simple content, unique namespace
+  class SiteUrl < Lutaml::Model::Serializable
+    attribute :url, :string
+
+    xml do
+      root "website"
+      namespace "http://example.com/url"
+      map_content to: :url
+    end
+  end
+end
+
+module Pottery
+  # Simple content, unique namespace
+  class Potter < Lutaml::Model::Serializable
+    attribute :name, :string
+
+    xml do
+      root "potter"
+      namespace "http://example.com/potter"
+    end
+  end
+end
+
+module Production
+  # Nested content, unique namespace
+  class ProductionSite < Lutaml::Model::Serializable
+    attribute :name, :string
+    attribute :glazes_produced, :string, collection: true
+    attribute :location, Location # Same namespace
+    attribute :website, SiteUrl
+
+    xml do
+      root "production_site"
+      namespace "http://example.com/production"
+      map_element "name", to: :name
+      map_element "glazes_produced", to: :glazes_produced
+      # Same namespace, no need prefix
+      map_element "location", to: :location
+      # Different namespace
+      map_element "established_at", to: :established_at
+      # Different namespace
+      map_element "website", to: :website, prefix: "s"
+    end
+  end
+
+  # Simple content, sharing namespace with ProductionSite
+  class Location < Lutaml::Model::Serializable
+    attribute :address, :string
+    attribute :city, :string
+    attribute :country, :string
+
+    xml do
+      root "location"
+      namespace "http://example.com/production"
+    end
+  end
+end
+
+module Ceramic
+  # Complex content model
+  class Ceramic < Lutaml::Model::Serializable
+    attribute :type, :string
+    attribute :composition, Composition
+    attribute :id, Identifier
+    attribute :glaze, :string
+    attribute :category, Category
+    attribute :production_site, ProductionSite
+    attribute :potter, Potter
+
+    xml do
+      root "ceramic"
+      namespace "http://example.com/ceramic"
+
+      # Attribute with no namespace
+      map_attribute "type", to: :type
+      # Attribute with same namespace, no need prefix
+      map_attribute "composition", to: :composition
+      # Attribute with different namespace, need prefix
+      map_attribute "id", to: :id, prefix: "c"
+      # Element with no namespace
+      map_element "glaze", to: :glaze
+      # Element with same namespace, no need prefix
+      map_element "category", to: :category
+      # Element with different namespace with no prefix
+      map_element "production_site", to: :production_site
+      # Element with different namespace with prefix
+      map_element "potter", to: :potter, prefix: "p"
+    end
+  end
+
+  # Simple content, sharing namespace with Ceramic
+  class Composition < Lutaml::Model::Serializable
+    attribute :name, :string
+
+    xml do
+      root "composition"
+      map_content to: :name
+      namespace "http://example.com/ceramic"
+    end
+  end
+
+  # Simple content, sharing namespace with Ceramic
+  class Category < Lutaml::Model::Serializable
+    attribute :name, :string
+
+    xml do
+      root "category"
+      map_content to: :name
+      namespace "http://example.com/ceramic"
+    end
+  end
+end
+
+location = Production::Location.new(address: "15 Rue du Temple", city: "Limoges", country: "France")
+production_site = Production::ProductionSite.new(name: "Bernardaud Factory", glazes_produced: ["Celadon", "Crystalline"], location: location)
+potter = Pottery::Potter.new(name: "Alice Perrin")
+composition = Ceramic::Composition.new(name: "Porcelain")
+identifier = Common::Identifier.new(name: "1234")
+category = Ceramic::Category.new(name: "Ornamental")
+ceramic = Ceramic::Ceramic.new(
+  type: "Fine Porcelain",
+  glaze: "Celadon",
+  production_site: production_site,
+  potter: potter,
+  composition: composition,
+  id: identifier,
+  category: category,
+)
+
+puts ceramic.to_xml
+# =>
+<<~XML
+  <?xml version="1.0" encoding="UTF-8"?>
+  <ceramic xmlns="http://example.com/ceramic"
+            xmlns:c="http://example.com/identifier"
+            xmlns:p="http://example.com/potter"
+            type="Fine Porcelain"
+            composition="Porcelain"
+            c:id="1234"
+            category="Ornamental">
+    <!-- Default namespace -->
+    <glaze>Celadon</glaze>
+    <!-- Same namespace, no need prefix -->
+    <category>Ornamental</category>
+    <!-- Different namespace, change default namespace inside -->
+    <production_site xmlns="http://example.com/production"
+                      xmlns:s="http://example.com/url">
+      <name>Bernardaud Factory</name>
+      <glazes_produced>Celadon</glazes_produced>
+      <glazes_produced>Crystalline</glazes_produced>
+      <!-- Same namespace, no need prefix -->
+      <location>
+        <address>15 Rue du Temple</address>
+        <city>Limoges</city>
+        <country>France</country>
+      </location>
+      <!-- Different namespace -->
+      <established_at xmlns="http://example.com/url">2010</established_at>
+      <!-- Different namespace, parent has explicitly set prefix -->
+      <s:website>http://www.bernardaud.com</s:website>
+    </production_site>
+    <!-- Different namespace, parent has explicitly set prefix -->
+    <p:potter>
+      <p:name>Alice Perrin</p:name>
+    </p:potter>
+  </ceramic>
+XML
+----

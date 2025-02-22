@@ -3,11 +3,12 @@ metanorma:
   source:
     files:
       - sources/lutaml-lang.adoc
+      - sources/lutaml-path.adoc
       - sources/model-collection.adoc
       - sources/model-transform.adoc
       - sources/model-register.adoc
-      - sources/lutaml-path.adoc
-      
+      - sources/xml-namespaces.adoc
+
   collection:
     organization: "LutaML"
     name: "LutaML specifications"

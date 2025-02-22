@@ -10,10 +10,12 @@ This document is available in its rendered forms here:
 
 This repository contains the official specifications for the LutaML framework, a comprehensive suite of tools for model-driven development. The specifications include:
 
-RS 3005:: *LutaML Path* -- A query language for navigating and querying LutaML Models and their instances
-RS 3002:: *Model Collection* -- Specification for managing collections of model instances with serialization capabilities
+RS 3001:: *LutaML Language* -- Specification for defining LutaML syntax and semantics
+RS 3002:: *LutaML Path* -- A query language for navigating and querying LutaML Models and their instances
 RS 3004:: *Model Register* -- Framework for model registration and discovery
+RS 3005:: *Model Collection* -- Specification for managing collections of model instances with serialization capabilities
 RS 3003:: *Model Transform* -- Specification for model transformation and mapping operations
+RS 3006:: *XML Namespaces* -- Specification for XML namespaces used in LutaML
 
 These specifications are written in Metanorma to generate standardized documentation in multiple formats.
 
@@ -21,10 +23,13 @@ These specifications are written in Metanorma to generate standardized documenta
 
 `sources/`:: source files for LutaML specifications in Metanorma format.
 
+`lutaml-lang.adoc`::: LutaML Language specification
 `lutaml-path.adoc`::: LutaML Path specification
 `model-collection.adoc`::: Model Collection specification
 `model-register.adoc`::: Model Register specification
 `model-transform.adoc`::: Model Transform specification
+`xml-namespaces.adoc`::: XML Namespaces
+
 
 `_site/`::
 Generated documentation in multiple formats (HTML, PDF, XML, etc.)
