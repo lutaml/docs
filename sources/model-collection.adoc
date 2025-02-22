@@ -1,7 +1,7 @@
 = LutaML -- Model Collections
 :edition: 1.0
 :doctype: standard
-:docnumber: RS 3002
+:docnumber: RS 3005
 :published-date: 2025-02-20
 :status: published
 :security: unrestricted
