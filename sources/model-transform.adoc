@@ -214,7 +214,7 @@ model instance in these steps:
 This architecture means Plurimath::Math does not directly handle serialization,
 but can transform into the `Mml` model when serialization is needed.
 
-When a MathML XML document is saved, the process is reversed: 
+When a MathML XML document is saved, the process is reversed:
 
 . The `Plurimath::Formula` LutaML model => The `Mml` LutaML model
 . The `Mml` LutaML model within the `mml` gem => MathML XML
@@ -223,7 +223,7 @@ When a MathML XML document is saved, the process is reversed:
 ==== Between serialization models
 
 A common requirement is the need to handle multiple serialization formats for the
-same data model. 
+same data model.
 
 The https://github.com/metanorma/modspec-ruby[`modspec` gem] provides a LutaML
 model for the OGC Modular Specification (ModSpec) requirements model, and supports
@@ -367,7 +367,7 @@ bidirectional mapping rules, the transform is bidirectional.
 class SimpleBidirectionalTransform < Lutaml::Model::Transform
   source_model :source_model
   target_model :target_model
-    
+
   transform do
     # mapping without value transform logic
   end
@@ -384,7 +384,7 @@ unidirectional mapping rules, the transform is unidirectional.
 class UnidirectionalTransform < Lutaml::Model::Transform
   source_model :source_model
   target_model :target_model
-  
+
   transform do
     # mapping with value transform logic
   end
@@ -402,7 +402,7 @@ contains reverse unidirectional mapping rules, the transform is bidirectional.
 class ExplicitBidirectionalTransform < Lutaml::Model::Transform
   source_model :source_model
   target_model :target_model
-    
+
   transform do
     # mapping with value transform logic
   end
@@ -501,7 +501,7 @@ DateFormatTransform.reverse_transform(Date.new(2021, 1, 1))
 Model transforms operate on entire model structures, mapping attributes between
 different model representations.
 
-=== Base requirements 
+=== Base requirements
 
 A model transform:
 
@@ -517,7 +517,7 @@ Syntax:
 class TransformClass < Lutaml::Model::Transform
   source_model :source_model <1>
   target_model :target_model <2>
-  
+
   transform do
     # mapping rules
   end
@@ -768,43 +768,398 @@ Syntax:
 
 [source,ruby]
 ----
-map from: 'parent.child', to: 'parent.child'
+# Value to value transformation
+map from: 'source_attribute', to: 'destination_attribute'
+
+# Cross-model-value transformation
+## Value to model transformation
+map from: 'source_model.attribute', to: 'destination_attribute'
+## Model to value transformation
+map from: 'source_attribute', to: 'destination_model.attribute'
+
+# Model to model transformation
+map from: 'source_model.[...]attribute', to: 'destination_model.[...]attribute'
 ----
 
-[example]
-====
+There are three scenarios in transforming nested attributes:
+
+. Value to value transformation
+. Cross model-value transformation
+. Model to model transformation
+
+=== Value to value transformation
+
+We can apply a value-to-value transformation if both the source and destination
+attributes are values.
+
+Suppose we have the following source and destination models.
+
 [source,ruby]
 ----
-class Organization < Lutaml::Model::Serializable
-  attribute :department, DepartmentInformation
+class UnstructuredDateTime < Lutaml::Model::Value
+  attribute :value, :string
 end
 
-class DepartmentInformation < Lutaml::Model::Serializable
-  attribute :name, :string
-  attribute :code, :string
+class StructuredDateTime < Lutaml::Model::Value
+  attribute :date, :string
+  attribute :time, :string
 end
 
-class OrganizationMetadata < Lutaml::Model::Serializable
-  attribute :department, DepartmentMetadata
+class OldDigitalTimepiece < Lutaml::Model::Serializable
+  attribute :raw_time, UnstructuredDateTime
 end
 
-class DepartmentMetadata < Lutaml::Model::Serializable
-  attribute :name, :string
-  attribute :identifier, :string
+class NewDigitalTimepiece < Lutaml::Model::Serializable
+  attribute :detailed_time, StructuredDateTime
 end
+----
 
-class OrganizationTransform < Lutaml::Model::Transform
-  source_model Organization
+First define a value transform:
 
-  # These are bi-directional mappings
-  transform do
-    map from: 'department.name', to: 'department.name'
-    map from: 'department.code', to: 'department.identifier'
+[source,ruby]
+----
+class DateTimeTransform < Lutaml::Value::Transform
+  source_value UnstructuredDateTime
+  target_value StructuredDateTime
+
+  transform do |source_value|
+    # In ISO 8601-1:2019, a basic date-time string can be "{YYYY}{MM}{DD}T{hh}:{mm}:{ss}"
+    date, time = source_value.value.split('T')
+    StructuredDateTime.new(date: date, time: time)
+  end
+
+  reverse_transform do |target_value|
+    UnstructuredDateTime.new(value: "#{target_value.date}T#{target_value.time}")
   end
 end
 ----
+
+Then define a model transform:
+
+[source,ruby]
+----
+class TimepieceTransform < Lutaml::Model::Transform
+  source_model OldDigitalTimepiece
+  target_model NewDigitalTimepiece
+
+  transform do
+    map from: 'time', to: 'time', transform: DateTimeTransform
+  end
+end
+----
+
+The resulting transformation is demonstrated with this diagram.
+
+[source]
+----
+                            transforms via
+                            DateTimeTransform
+╔════════════════════════════════╗      ╔═══════════════════════════════════╗
+║  UnstructuredDateTime          ║      ║  StructuredDateTime               ║
+╠════════════════════════════════╣ ───► ╠═══════════════════════════════════╣
+║  value: string                 ║      ║  date: string                     ║
+║                                ║      ║  time: string                     ║
+╚════════════════════════════════╝      ╚═══════════════════════════════════╝
+       ▲                                         ▲
+       │                                         │
+       │has_one                                  │has_one
+       │                                         │
+╔════════════════════════════════╗      ╔═══════════════════════════════════╗
+║ OldDigitalTimepiece            ║      ║ NewDigitalTimepiece               ║
+╠════════════════════════════════╣ ───► ╠═══════════════════════════════════╣
+║ raw_time: UnstructuredDateTime ║      ║ detailed_time: StructuredDateTime ║
+╚════════════════════════════════╝      ╚═══════════════════════════════════╝
+                            transforms via
+                            TimepieceTransform
+────► : Transformation processing
+----
+
+[[nested-cross-model-value-transformation]]
+=== Cross model-value transformation
+
+A cross-model-value transformation occurs when one of the source and
+destination attributes is a model and the other is a value.
+
+Suppose we have a set of deeper source and destination models.
+
+[source,ruby]
+----
+class UnstructuredDateTimeWithOffset < Lutaml::Model::Value
+  attribute :value, :string
+end
+
+class StructuredDateTimeWithOffset < Lutaml::Model::Model
+  attribute :date_time, StructuredDateTime
+  attribute :offset, TimeOffset
+end
+
+class TimeOffset < Lutaml::Model::Value
+  attribute :value, :string
+end
+
+class OldDigitalTimepiece < Lutaml::Model::Serializable
+  attribute :raw_time, UnstructuredDateTimeWithOffset
+end
+
+class NewDigitalTimepiece < Lutaml::Model::Serializable
+  attribute :detailed_time, StructuredDateTimeWithOffset
+end
+----
+
+Here, the `UnstructuredDateTimeWithOffset` model is a value, and the
+`StructuredDateTimeWithOffset` model is a model.
+
+A cross-model-value transform is defined to transform between
+`UnstructuredDateTimeWithOffset` (value) and `StructuredDateTimeWithOffset`
+(model).
+
+[source,ruby]
+----
+class DateTimeTransform < Lutaml::Value::Transform
+  source_value UnstructuredDateTimeWithOffset
+  target_value StructuredDateTimeWithOffset
+
+  # Split the string into date, time, and offset
+  transform do |source_value|
+    match, date, time, offset = source_value.value.match(/^(.+?)T(.+?)(?:\+(.+))?$/)
+    StructuredDateTimeWithOffset.new(
+      date_time: StructuredDateTime.new(date: date, time: time),
+      offset: TimeOffset.new(value: offset || '00:00')
+    )
+  end
+
+  reverse_transform do |target_value|
+    UnstructuredDateTimeWithOffset.new(
+      value:[
+        target_value.date_time.date,
+        "T",
+        target_value.date_time.time,
+        "+",
+        target_value.zone.offset
+      ].join("")
+    )
+  end
+end
+----
+
+Then define a model transform.
+
+[source,ruby]
+----
+class TimepieceTransform < Lutaml::Model::Transform
+  source_model OldDigitalTimepiece
+  target_model NewDigitalTimepiece
+
+  transform do
+    map from: 'raw_time', to: 'detailed_time', transform: DateTimeTransform
+  end
+end
+----
+
+The resulting transformation is demonstrated with this diagram.
+
+[source]
+----
+                      ╔═════════════════════════════╗  ╔════════════════════╗
+                      ║  StructuredDateTime (Model) ║  ║ TimeOffset (Value) ║
+                      ╠═════════════════════════════╣  ╠════════════════════╣
+                      ║  date: string               ║  ║ value: string      ║
+                      ║  time: string               ║  ║                    ║
+                      ╚═════════════════════════════╝  ╚════════════════════╝
+                                                 ▲             ▲
+                                                 │             │
+                                                 │has_one      │has_one
+                                                 │             │
+                        transforms via           │             │
+                        DateTimeTransform        │             │
+╔════════════════════════════════╗      ╔═══════════════════════════════════╗
+║ UnstructuredDateTimeWithOffset ║      ║ StructuredDateTimeWithOffset      ║
+╠════════════════════════════════╣ ───► ╠═══════════════════════════════════╣
+║ value: string                  ║      ║ date_time: StructuredDateTime     ║
+║                                ║      ║ offset: TimeOffset                ║
+╚════════════════════════════════╝      ╚═══════════════════════════════════╝
+                    ▲                                         ▲
+                    │                                         │
+                    │has_one                                  │has_one
+                    │                                         │
+╔══════════════════════════════════════════╗      ╔═════════════════════════════════════════════╗
+║ OldDigitalTimepiece                      ║      ║ NewDigitalTimepiece                         ║
+╠══════════════════════════════════════════╣ ───► ╠═════════════════════════════════════════════╣
+║ raw_time: UnstructuredDateTimeWithOffset ║      ║ detailed_time: StructuredDateTimeWithOffset ║
+╚══════════════════════════════════════════╝      ╚═════════════════════════════════════════════╝
+                                        transforms via
+                                        TimepieceTransform
+────► : Transformation processing
+----
+
+[[nested-model-to-model-transformation]]
+=== Model-to-model transformation
+
+Model-to-model transformations handle mapping between models.
+
+In a model-to-model transformation, a Value Transform may be used to transform
+the value of an attribute.
+
+When approaching model to model transformation, the mapping can be placed
+at the desired level of transformation.
+
+. Creating the mapping at the most basic level, where either the mapping source or
+destination is an attribute accessible at root.
++
+[example]
+====
+In the mapping, a `time` path is a root attribute, referring to the attribute of
+`{source|target}.time`.
 ====
 
+. Creating the mapping at the model-to-model level, where both source and
+destination are models, . Given a deep model hierarchy, the transformation can be
+applied at a shallow level (e.g. close to the underlying value) or at a deeper
+level (e.g. close to the top-level model, very nested).
++
+[example]
+====
+A path of `clock.time` refers to an inner model attribute, referring to the
+attribute of `{source|target}.clock.time`.
+
+A path of `computer.clock.time` refers to a deeper model attribute, referring to
+the attribute of `{source|target}.computer.clock.time`.
+====
+
+The consideration on where the mapping is placed depends on the accessibility,
+appropriateness and authority of the desired transformation.
+
+A basic level value-to-value or cross-model-value transformation may not be
+practical when the source and destination models are not managed or owned by the
+party performing the transformation.
+
+To illustrate such a scenario, we add one more model layer to the same model as
+in <<nested-cross-model-value-transformation>> to define `ComputerClock` and
+`WallClock`. Then move the transformation logic to the model level.
+
+[source,ruby]
+----
+class UnstructuredDateTimeWithOffset < Lutaml::Model::Value
+  attribute :value, :string
+end
+
+class StructuredDateTimeWithOffset < Lutaml::Model::Model
+  attribute :date_time, StructuredDateTime
+  attribute :offset, TimeOffset
+end
+
+class TimeOffset < Lutaml::Model::Value
+  attribute :value, :string
+end
+
+class OldDigitalTimepiece < Lutaml::Model::Serializable
+  attribute :raw_time, UnstructuredDateTimeWithOffset
+end
+
+class NewDigitalTimepiece < Lutaml::Model::Serializable
+  attribute :detailed_time, StructuredDateTimeWithOffset
+end
+
+class WallClock < Lutaml::Model::Serializable
+  attribute :timepiece, OldDigitalTimepiece
+end
+
+class ComputerClock < Lutaml::Model::Serializable
+  attribute :timepiece, NewDigitalTimepiece
+end
+
+class DateTimeTransform < Lutaml::Value::Transform
+  source_value UnstructuredDateTimeWithOffset
+  target_value StructuredDateTimeWithOffset
+
+  # Split the string into date, time, and offset
+  transform do |source_value|
+    match, date, time, offset = source_value.value.match(/^(.+?)T(.+?)(?:\+(.+))?$/)
+    StructuredDateTimeWithOffset.new(
+      date_time: StructuredDateTime.new(date: date, time: time),
+      offset: TimeOffset.new(value: offset || '00:00')
+    )
+  end
+
+  reverse_transform do |target_value|
+    UnstructuredDateTimeWithOffset.new(
+      value:[
+        target_value.date_time.date,
+        "T",
+        target_value.date_time.time,
+        "+",
+        target_value.zone.offset
+      ].join("")
+    )
+  end
+end
+----
+
+Now define a model transform between `ComputerClock` and `WallClock`.
+
+[source,ruby]
+----
+class ClockTransform < Lutaml::Model::Transform
+  source_model WallClock
+  target_model ComputerClock
+
+  transform do
+    map from: 'timepiece.raw_time', to: 'timepiece.detailed_time', transform: DateTimeTransform
+  end
+end
+----
+
+Notice that different from the <<nested-cross-model-value-transformation>>,
+the transformation is now applied at the model level, where the mapping is
+defined at a model-to-model level where both source and destination do not
+own the attributes involved in transformation.
+
+The resulting transformation is demonstrated with this diagram.
+
+[source]
+----
+                      ╔═════════════════════════════╗  ╔════════════════════╗
+                      ║  StructuredDateTime (Model) ║  ║ TimeOffset (Value) ║
+                      ╠═════════════════════════════╣  ╠════════════════════╣
+                      ║  date: string               ║  ║ value: string      ║
+                      ║  time: string               ║  ║                    ║
+                      ╚═════════════════════════════╝  ╚════════════════════╝
+                                                 ▲             ▲
+                                                 │             │
+                                                 │has_one      │has_one
+                                                 │             │
+                        transforms via           │             │
+                        DateTimeTransform        │             │
+╔════════════════════════════════╗      ╔═══════════════════════════════════╗
+║ UnstructuredDateTimeWithOffset ║      ║ StructuredDateTimeWithOffset      ║
+╠════════════════════════════════╣ ───► ╠═══════════════════════════════════╣
+║ value: string                  ║      ║ date_time: StructuredDateTime     ║
+║                                ║      ║ offset: TimeOffset                ║
+╚════════════════════════════════╝      ╚═══════════════════════════════════╝
+                    ▲                                         ▲
+                    │                                         │
+                    │has_one                                  │has_one
+                    │                                         │
+╔══════════════════════════════════════════╗       ╔═════════════════════════════════════════════╗
+║ OldDigitalTimepiece                      ║       ║ NewDigitalTimepiece                         ║
+╠══════════════════════════════════════════╣ ─ ─ ► ╠═════════════════════════════════════════════╣
+║ raw_time: UnstructuredDateTimeWithOffset ║       ║ detailed_time: StructuredDateTimeWithOffset ║
+╚══════════════════════════════════════════╝       ╚═════════════════════════════════════════════╝
+                    ▲          Mapping specified via          ▲
+                    │          ClockTransform.transform       │
+                    │has_one                                  │has_one
+                    │                                         │
+╔════════════════════════════════╗      ╔════════════════════════════════╗
+║ WallClock                      ║      ║ ComputerClock                  ║
+╠════════════════════════════════╣ ───► ╠════════════════════════════════╣
+║ timepiece: OldDigitalTimepiece ║      ║ timepiece: NewDigitalTimepiece ║
+╚════════════════════════════════╝      ╚════════════════════════════════╝
+                                transforms via
+                                ClockTransform
+
+- - ► : Transformation mapping only
+────► : Transformation processing
+----
 
 
 == Collection transforms
@@ -1064,7 +1419,7 @@ This is an example of a YAML file that represents the first model tree:
     name: "Peter Voulkos"
     bio: |
       Peter Voulkos was an American artist of Greek descent.
-      
+
       Awards: National Medal of Arts, 2001.
 
       Skills: Throwing, hand-building, glazing
@@ -1191,7 +1546,7 @@ class CeramicArtInformationTransform < Lutaml::Model::Transform
   transform do
     # Simple mapping
     map from: 'title', to: 'title'
-    map from: 'description', to: 'description'    
+    map from: 'description', to: 'description'
   end
 end
 ----
@@ -1207,7 +1562,7 @@ class CeramicArtInformationTransform < Lutaml::Model::Transform
   transform do
     # Simple mapping
     map from: 'title', to: 'title'
-    map from: 'description', to: 'description'    
+    map from: 'description', to: 'description'
 
     # Rename attributes
     map from: 'place_of_work', to: 'location'
@@ -1226,7 +1581,7 @@ class CeramicArtInformationTransform < Lutaml::Model::Transform
   transform do
     # Simple mapping
     map from: 'title', to: 'title'
-    map from: 'description', to: 'description'    
+    map from: 'description', to: 'description'
 
     # Rename attributes
     map from: 'place_of_work', to: 'location'
@@ -1305,7 +1660,7 @@ class CeramicArtInformationTransform < Lutaml::Model::Transform
   transform do
     # Simple mapping
     map from: 'title', to: 'title'
-    map from: 'description', to: 'description'    
+    map from: 'description', to: 'description'
 
     # Rename attributes
     map from: 'place_of_work', to: 'location'
@@ -1392,7 +1747,7 @@ class DimensionsTransform < Lutaml::Model::Transform
     height, width, depth = source_value.match(/Dimensions: (\d+)x(\d+)x(\d+)/).captures
     target_model.new(
       height: height.to_i,
-      width: width.to_i, 
+      width: width.to_i,
       depth: depth.to_i
     )
   end
@@ -1422,7 +1777,7 @@ class CeramicArtInformationTransform < Lutaml::Model::Transform
   transform do
     # Simple mapping
     map from: 'title', to: 'title'
-    map from: 'description', to: 'description'    
+    map from: 'description', to: 'description'
 
     # Rename attributes
     map from: 'place_of_work', to: 'location'
@@ -1508,7 +1863,7 @@ class DimensionsTransform < Lutaml::Model::Transform
     height, width, depth = source_value.match(/Dimensions: (\d+)x(\d+)x(\d+)/).captures
     target_model.new(
       height: height.to_i,
-      width: width.to_i, 
+      width: width.to_i,
       depth: depth.to_i
     )
   end
@@ -1641,7 +1996,7 @@ The transformed data looks like this.
     name: "Peter Voulkos"
     bio: |
       Peter Voulkos was an American artist of Greek descent.
-      
+
       Awards: National Medal of Arts, 2001.
 
       Skills: Throwing, hand-building, glazing
