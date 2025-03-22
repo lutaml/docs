@@ -30,6 +30,8 @@ This document specifies the model register capabilities in LutaML Model, which e
 * Dynamic model attribute modification
 * Model hierarchy manipulation
 * Cross-model attribute type substitution
+* Versioned model trees with consistent class relationships
+* Mixed-version model construction for flexible upgrade paths
 
 [bibliography]
 == Normative references
@@ -42,6 +44,10 @@ This document specifies the model register capabilities in LutaML Model, which e
 === model register
 
 registry that maintains and manages dynamic model configurations
+
+=== global register
+
+registry that maintains references to all model registers in the system, allowing lookups by register ID
 
 === model path
 
@@ -59,6 +65,15 @@ process of replacing one attribute type with another within a model
 
 collection of interconnected models that form a hierarchical structure
 
+=== registrable class
+
+class that can be registered in a model register, allowing dynamic instantiation and type resolution
+
+=== mixed-version model tree
+
+model tree that incorporates models from multiple version registers, allowing selective version upgrades
+
+
 == Principles of model registers
 
 === General
@@ -72,8 +87,12 @@ Common use cases include:
 * Swapping model subtrees with alternative implementations
 * Adding or removing attributes from models
 * Converting between different model namespaces
+* Managing versioned model trees with consistent class relationships
+* Creating mixed-version model configurations for targeted upgrades
 
 === Architecture
+
+==== Basic model register architecture
 
 A model register acts as a dynamic configuration layer that sits above the static
 model definitions:
@@ -83,14 +102,14 @@ model definitions:
 ╔═══════════════════════╗   ╔══════════════════════╗
 ║    Model Register     ║   ║  Model Definitions   ║
 ╚═══════════════════════╝   ╚══════════════════════╝
-     │                            │
-     │                    ┌───────┴───────┐
-     │                    │               │
-     │               Model Tree A    Model Tree B
-     │                    │               │
-     │              ┌────┴────┐     ┌────┴────┐
-     │              │         │     │         │
-     └──────────►ModelA   ModelB   ModelC   ModelD
+            │                          │
+            │                  ┌───────┴───────┐
+            │                  │               │
+            ├───────────► Model Tree A    Model Tree B
+            │                  │               │
+            │             ┌────┴────┐     ┌────┴────┐
+            │             │         │     │         │
+            └─────────► ModelA   ModelB ModelC   ModelD
 ----
 
 .Subtree Swap
@@ -98,9 +117,9 @@ model definitions:
 ----
 Before:                        After:
   ModelA                        ModelA
-   ├─ModelB                     ├─ModelB
-   │  └─ModelC                 │  └─NewSubtree
-   └─ModelD                    └─ModelD
+   ├─ModelB                      ├─ModelB
+   │  └─ModelC                   │  └─NewSubtree
+   └─ModelD                      └─ModelD
 ----
 
 .Single Model Swap
@@ -108,8 +127,8 @@ Before:                        After:
 ----
 Before:                        After:
   ModelA                        ModelA
-   ├─ModelB                     ├─NewModel
-   └─ModelC                     └─ModelC
+   ├─ModelB                      ├─NewModel
+   └─ModelC                      └─ModelC
 ----
 
 .Global Type Substitution
@@ -117,14 +136,92 @@ Before:                        After:
 ----
 Before:                        After:
   Document                      Document
-   ├─NameString                 ├─StructuredName
-   └─Author                     └─Author
-    └─NameString                └─StructuredName
+   ├─NameString                  ├─StructuredName
+   └─Author                      └─Author
+      └─NameString                  └─StructuredName
+----
+
+==== Versioned model register architecture
+
+The complete model register system consists of three components:
+
+* A Global Register that maintains references to all Model Registers
+* Multiple Model Registers, each containing a consistent version of model classes
+* A `Registrable` class for each Lutaml::Model instance that can be registered in a model register
+
+[source]
+----
+┌─────────────────────────────────────────┐
+│           Global Register               │
+│                                         │
+│  ┌───────────┐   ┌───────────┐   ┌───┐  │
+│  │Register A │   │Register B │   │...│  │
+│  │  (ID: A)  │   │  (ID: B)  │   │   │  │
+│  └───────────┘   └───────────┘   └───┘  │
+└─────────────────────────────────────────┘
+       │               │
+       ▼               ▼
+┌───────────┐     ┌───────────┐
+│ Models A  │     │ Models B  │
+│ - Top A   │     │ - Top B   │
+│ - L2 A    │     │ - L2 B    │
+│ - L3 A    │     │ - L3 B    │
+└───────────┘     └───────────┘
+----
+
+When a model is instantiated, it is associated with the Model Register that created it. To avoid circular references that can impact garbage collection, models do not maintain direct references to their Model Register. Instead, they maintain the register's ID, which is used to look up the appropriate register when needed.
+
+[source]
+----
+┌───────────────────┐        uses ID to lookup
+│  TopLevelClass    │─────────────────┐
+│  (Register ID: A) │◄──────────────┐ │
+└───────────────────┘               │ │
+          │                         │ │
+          │                         │ │
+          ▼                         │ ▼
+┌───────────────────┐      ┌───────────────────┐
+│  Model Register A │◄─────│  Global Register  │
+└───────────────────┘      └───────────────────┘
+          │
+          │ provides
+          ▼
+┌───────────────────┐        uses ID to lookup
+│     L2Class       │─────────────────┐
+│  (Register ID: A) │◄──────────────┐ │
+└───────────────────┘               │ │
+          │                         │ │
+          │                         │ │
+          ▼                         │ ▼
+┌───────────────────┐      ┌───────────────────┐
+│  Model Register A │◄─────│  Global Register  │
+└───────────────────┘      └───────────────────┘
+          │
+          │ provides
+          ▼
+┌───────────────────┐
+│     L3Class       │
+│  (Register ID: A) │
+└───────────────────┘
 ----
 
 === Basic usage
 
-A model register is created and populated with model definitions:
+A model register is created and populated with model definitions.
+
+Syntax:
+
+[source,ruby]
+----
+class ModelName < Lutaml::Model::Serializable
+  attribute :attribute_name, :attribute_type
+end
+
+register = Lutaml::ModelRegister.new(ModelName)
+
+register.resolve("ModelName")
+# => ModelName
+----
 
 [source,ruby]
 ----
@@ -185,11 +282,44 @@ Valid model paths include:
 * `Publication > Book.chapters` - References the chapters collection
 ====
 
+== Global register
+
+=== General
+
+The Global Register maintains a mapping of register IDs to Model Register instances. It serves as the central repository for all model registers in the system, allowing models to locate the appropriate register when they need to instantiate dependent model classes.
+
+=== Key capabilities
+
+The Global Register provides methods to:
+
+* Register a new Model Register with a unique ID
+* Look up a Model Register by ID
+* Remove a Model Register when it's no longer needed
+
+[source,ruby]
+----
+# Create model registers
+register_v1 = ModelRegister.new(:v1)
+register_v2 = ModelRegister.new(:v2)
+
+# Register with global registry
+GlobalRegister.register(register_v1)
+GlobalRegister.register(register_v2)
+
+# Look up by ID
+same_register = GlobalRegister.lookup(:v1)
+# => register_v1
+----
+
 == Model registration
 
 === General
 
-Models must be registered before they can be dynamically modified.
+Models must be registered before they can be dynamically modified. Each model is
+registered with a specific Model Register instance, which may contain a
+version-consistent set of model classes.
+
+This is a manual step.
 
 === Registration methods
 
@@ -201,14 +331,20 @@ Syntax:
 
 [source,ruby]
 ----
-register.register_model(ModelClass)
+register.register_model(ModelClass) <1>
+# or
+register.register_model(:model_name, ModelClass) <2>
 ----
+<1> Registers the model class with a snake-case of its name
+<2> Registers the model class with a custom name
 
 [example]
 ====
 [source,ruby]
 ----
 register.register_model(StorageRecord)
+# or
+register.register_model(:storage_record, StorageRecord)
 ----
 ====
 
@@ -232,6 +368,127 @@ register.register_model_tree(StorageRecordCollection)
 # - StorageRecordCollection
 # - StorageRecord
 # - GeneralCeramicInfo
+----
+====
+
+== Mixed-version model trees
+
+=== General
+
+A key advantage of the Model Register system is the ability to create custom registers that mix and match classes from different versions. This enables greater flexibility when specific versions of different model classes need to work together.
+
+[source]
+----
+┌───────────────────────────────────────────────────────────────┐
+│                      Global Register                          │
+│                                                               │
+│  ┌────────────┐   ┌────────────┐   ┌────────────────────┐     │
+│  │Register v1 │   │Register v2 │   │Register MixedVer   │     │
+│  │  (ID: v1)  │   │  (ID: v2)  │   │  (ID: mixed)       │     │
+│  └────────────┘   └────────────┘   └────────────────────┘     │
+└───────────────────────────────────────────────────────────────┘
+       │                │                       │
+       ▼                ▼                       ▼
+┌────────────┐    ┌────────────┐    ┌────────────────────┐
+│ v1 Models  │    │ v2 Models  │    │ Mixed Ver Models   │
+├────────────┤    ├────────────┤    ├────────────────────┤
+│TopLevel v1 │    │TopLevel v2 │    │TopLevel from v1    │
+│L2Class v1  │    │L2Class v2  │    │L2Class from v2     │
+│L3Class v1  │    │L3Class v2  │    │L3Class from v1     │
+└────────────┘    └────────────┘    └────────────────────┘
+----
+
+Different Model Registers can contain different versions of the same model classes:
+
+[source]
+----
+┌────────────────────────────────────────────────────┐
+│                  Global Register                   │
+│                                                    │
+│  ┌─────────────────┐      ┌─────────────────┐      │
+│  │  Register v1    │      │  Register v2    │      │
+│  │    (ID: v1)     │      │    (ID: v2)     │      │
+│  └─────────────────┘      └─────────────────┘      │
+└────────────────────────────────────────────────────┘
+          │                         │
+          ▼                         ▼
+┌─────────────────┐      ┌─────────────────┐
+│ TopLevel (v1)   │      │ TopLevel (v2)   │
+├─────────────────┤      ├─────────────────┤
+│ - prop1: String │      │ - prop1: String │
+│ - prop2: Int    │      │ - prop2: Int    │
+│                 │      │ - prop3: Bool   │ <- New in v2
+└─────────────────┘      └─────────────────┘
+          │                         │
+          ▼                         ▼
+┌─────────────────┐      ┌─────────────────┐
+│ L2Class (v1)    │      │ L2Class (v2)    │
+├─────────────────┤      ├─────────────────┤
+│ - oldProp       │      │ - newProp       │ <- Changed
+└─────────────────┘      └─────────────────┘
+          │                         │
+          ▼                         ▼
+┌─────────────────┐      ┌─────────────────┐
+│ L3Class (v1)    │      │ L3Class (v2)    │
+└─────────────────┘      └─────────────────┘
+----
+
+=== Creating a mixed-version register
+
+A mixed-version register allows you to selectively choose which version of each model class to use in a given context. This enables targeted upgrades and special compatibility scenarios.
+
+Syntax:
+
+[source,ruby]
+----
+# Create a mixed register
+mixed_register = ModelRegister.new(:mixed)
+
+# Configure with models from different versions
+mixed_register.register_model(:class_name, register_v1.get_class(:class_name))
+mixed_register.register_model(:other_class, register_v2.get_class(:other_class))
+
+# Register with global registry
+GlobalRegister.register(mixed_register)
+----
+
+[example]
+====
+[source,ruby]
+----
+# First, create standard version registers
+register_v1 = ModelRegister.new(:v1)
+register_v2 = ModelRegister.new(:v2)
+
+GlobalRegister.register(register_v1)
+GlobalRegister.register(register_v2)
+
+# Register classes into the registers
+register_v1.register_model(:top_level_class, V1::TopLevelClass)
+register_v1.register_model(:l2_class, V1::L2Class)
+register_v1.register_model(:l3_class, V1::L3Class)
+register_v2.register_model(:top_level_class, V2::TopLevelClass)
+register_v2.register_model(:l2_class, V2::L2Class)
+register_v2.register_model(:l3_class, V2::L3Class)
+
+# Create a mixed version register
+mixed_register = ModelRegister.new(:mixed)
+
+# Configure mixed register with specific versions
+mixed_register.register_model(:top_level_class, register_v1.get_class(:top_level_class))
+mixed_register.register_model(:l2_class, register_v2.get_class(:l2_class))
+mixed_register.register_model(:l3_class, register_v1.get_class(:l3_class))
+
+GlobalRegister.register(mixed_register)
+
+# Use the mixed register
+top_level = mixed_register.get_class(:top_level_class).from_json(data)
+
+top_level.l2_data.class
+# => V2::L2Class
+
+top_level.l2_data.l3_data.class
+# => V1::L3Class
 ----
 ====
 
@@ -388,6 +645,8 @@ Syntax:
 [source,ruby]
 ----
 ModelClass = register.resolve("ModelName")
+# or
+ModelClass = register.get_class(:model_name)
 ----
 
 [example]
@@ -424,6 +683,65 @@ VaseRecord = register.resolve_path(
 )
 ----
 ====
+
+=== Register-aware attribute definitions
+
+The model register system provides a new syntax for defining attributes that are aware of the model register context:
+
+Syntax:
+
+[source,ruby]
+----
+attribute :name, register(...symbol for type...)
+----
+
+This syntax indicates that the attribute type should be resolved through the model register at runtime. This approach allows models to instantiate dependent models using the same register that created them, ensuring version consistency.
+
+[example]
+====
+[source,ruby]
+----
+class TopLevelClass < Lutaml::Model::Serializable
+  attribute :l2_data, register(:l2_class)
+end
+
+class L2Class < Lutaml::Model::Serializable
+  attribute :l3_data, register(:l3_class)
+end
+
+class L3Class < Lutaml::Model::Serializable
+end
+----
+====
+
+== Implementation details
+
+=== Model class implementation
+
+Model classes are designed to work with the Model Register system by:
+
+* Storing the ID of the Model Register that created them
+* Using this ID to look up the appropriate register when they need to instantiate dependent models
+* Passing the register ID to any dependent models they create
+
+===  Registrable class
+
+Each model class that can be registered in a model register includes the `Registrable` module. By default, all `Lutaml::Model::Serializable` classes include this module.
+
+The `Registrable` module provides:
+
+* Methods to store and retrieve the register ID
+* Functionality to look up the appropriate register when instantiating dependent models
+* Serialization support that preserves register associations
+
+=== Value register implementation
+
+While model instances store the register ID to maintain proper model relationships, value instances (simple types) do not need to maintain this association since they don't instantiate other models.
+
+The distinction between model types and value types affects how they interact with the register system:
+
+* Model types: Store the register ID to maintain version consistency
+* Value types: Do not store register information to minimize overhead
 
 == Example scenarios
 
@@ -509,6 +827,34 @@ doc = DocumentClass.new(
   title: "Example",
   version: "1.0"
 )
+----
+
+=== Versioned model instantiation
+
+This example demonstrates using different model register versions.
+
+[source,ruby]
+----
+# Create and register model registers for different versions
+register_v1 = ModelRegister.new(:v1)
+register_v2 = ModelRegister.new(:v2)
+
+GlobalRegister.register(register_v1)
+GlobalRegister.register(register_v2)
+
+# Register models in each version
+register_v1.register_model(:document, V1::Document)
+register_v2.register_model(:document, V2::Document)
+
+# Use v1 register to create a Document instance
+data = { title: "Example", content: "Text" }
+doc_v1 = register_v1.get_class(:document).from_json(data)
+
+# Use v2 register to create a Document instance
+doc_v2 = register_v2.get_class(:document).from_json(data)
+
+# The instances will use their respective register versions
+# for instantiating any dependent models
 ----
 
 [appendix]
@@ -667,6 +1013,46 @@ register.add_attribute(
 )
 ----
 
+=== Step 5: Working with mixed model versions
+
+.Learning outcomes
+* Create and manage multiple model versions
+* Configure mixed-version model trees
+* Ensure version consistency in complex hierarchies
+
+[source,ruby]
+----
+# Create version registers
+register_v1 = ModelRegister.new(:v1)
+register_v2 = ModelRegister.new(:v2)
+
+GlobalRegister.register(register_v1)
+GlobalRegister.register(register_v2)
+
+# Register our document models in both registers
+register_v1.register_model_tree(Document)
+# ... v2 has updated implementations
+register_v2.register_model_tree(V2::Document)
+
+# Create a mixed register for specific compatibility needs
+mixed_register = ModelRegister.new(:mixed)
+
+# Use Document from v2 but Content from v1
+mixed_register.register_model(:document, register_v2.get_class(:document))
+mixed_register.register_model(:content, register_v1.get_class(:content))
+mixed_register.register_model(:section, register_v1.get_class(:section))
+
+GlobalRegister.register(mixed_register)
+
+# Create a document using our mixed register
+doc = mixed_register.get_class(:document).new(
+  metadata: mixed_register.get_class(:metadata).new(
+    title: "Mixed Version Example"
+  ),
+  content: mixed_register.get_class(:content).new
+)
+----
+
 === Summary
 
 This tutorial demonstrated:
@@ -676,6 +1062,8 @@ This tutorial demonstrated:
 * Model subtree replacement
 * Global type modifications
 * Cross-cutting attribute addition
+* Working with versioned model registers
+* Creating mixed-version model trees
 
 The progression shows how model registers enable flexible and maintainable
 model configurations that can adapt to different requirements while maintaining
