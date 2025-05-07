@@ -83,14 +83,14 @@ model definitions:
 ╔═══════════════════════╗   ╔══════════════════════╗
 ║    Model Register     ║   ║  Model Definitions   ║
 ╚═══════════════════════╝   ╚══════════════════════╝
-     │                            │
-     │                    ┌───────┴───────┐
-     │                    │               │
-     │               Model Tree A    Model Tree B
-     │                    │               │
-     │              ┌────┴────┐     ┌────┴────┐
-     │              │         │     │         │
-     └──────────►ModelA   ModelB   ModelC   ModelD
+     │                                 │
+     │                         ┌───────┴───────┐
+     │                         │               │
+     │                    Model Tree A    Model Tree B
+     │                         │               │
+     │                    ┌────┴────┐     ┌────┴────┐
+     │                    │         │     │         │
+     └────────────────► ModelA  ModelB   ModelC  ModelD
 ----
 
 .Subtree Swap
@@ -98,9 +98,9 @@ model definitions:
 ----
 Before:                        After:
   ModelA                        ModelA
-   ├─ModelB                     ├─ModelB
-   │  └─ModelC                 │  └─NewSubtree
-   └─ModelD                    └─ModelD
+  ├─ModelB                      ├─ModelB
+  │ └─ModelC                    │ └─NewSubtree
+  └─ModelD                      └─ModelD
 ----
 
 .Single Model Swap
@@ -108,8 +108,8 @@ Before:                        After:
 ----
 Before:                        After:
   ModelA                        ModelA
-   ├─ModelB                     ├─NewModel
-   └─ModelC                     └─ModelC
+  ├─ModelB                      ├─NewModel
+  └─ModelC                      └─ModelC
 ----
 
 .Global Type Substitution
@@ -117,9 +117,9 @@ Before:                        After:
 ----
 Before:                        After:
   Document                      Document
-   ├─NameString                 ├─StructuredName
-   └─Author                     └─Author
-    └─NameString                └─StructuredName
+  ├─NameString                  ├─StructuredName
+  └─Author                      └─Author
+    └─NameString                  └─StructuredName
 ----
 
 === Basic usage
