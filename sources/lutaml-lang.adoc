@@ -1175,7 +1175,7 @@ attribute {name}, {type} { default: {value} }
 // [source,ruby]
 // ----
 // class Glaze < Lutaml::Model::Base
-include Lutaml::Model::Serializable
+//   include Lutaml::Model::Serializable
 //   attribute :color, :string, default: -> { 'Clear' }
 //   attribute :temperature, :integer, default: -> { 1050 }
 // end
