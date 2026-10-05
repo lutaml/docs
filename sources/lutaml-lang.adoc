@@ -1332,12 +1332,14 @@ Syntax:
 
 [source,lml]
 ----
-xml {block}
+mapping xml {block}
 ----
 
 Where,
 
-`{block}`:: an XML block
+`{block}`:: an XML mapping block. Mappings are declared inside the class
+(in-class form; the enclosing class is the implied target) or as sibling
+constructs linked to their class — `mapping xml <ClassName> {block}`.
 
 [example]
 ====
@@ -1348,10 +1350,10 @@ class Studio {
   attribute potter, String
   attribute kiln, String
 
-  xml {
-    map_element "location" { attribute location }
-    map_element "potter" { attribute potter }
-    map_attribute "kiln" { attribute kiln }
+  mapping xml {
+    map_element "location" location
+    map_element "potter" potter
+    map_attribute "kiln" kiln
   }
 }
 ----
@@ -1370,19 +1372,21 @@ An instance of the class `Studio` will be serialized to XML as:
 
 Within the block, the following declarations are available:
 
+* `element` — the element (tag) name
+* `namespace <ref>` — a context-declared namespace reference
 * `map_element`
 * `map_attribute`
-* `root`
-* `no_root`
+* `map_content`
+* `mixed_content`
 
-==== Setting root element name
+==== Setting the element name
 
-By default, the root name is set to a lowercased version of the class name.
+By default, the element name is a lowercased version of the class name.
 
 [source,lml]
 ----
-xml {
-  root "xml_element_name" <1>
+mapping xml {
+  element "xml_element_name" <1>
 }
 ----
 <1> The name of the root element.
@@ -1396,11 +1400,11 @@ class Studio {
   attribute potter, String
   attribute kiln, String
 
-  xml {
-    root "local-studios"
-    map_element "location" { attribute location }
-    map_element "potter" { attribute potter }
-    map_attribute "kiln" { attribute kiln }
+  mapping xml {
+    element "local-studios"
+    map_element "location" location
+    map_element "potter" potter
+    map_attribute "kiln" kiln
   }
 }
 ----
@@ -1423,41 +1427,31 @@ An instance of the class `Studio` will be serialized to XML as:
 By default, there exists a root element in a model represented in XML. In cases
 where the root element is not to be present, it can be omitted.
 
-Syntax:
+==== Omitting the element (type-only model)
 
-[source,lml]
-----
-xml {
-  no_root
-}
-----
+A model without an `element` declaration is a type-only model: its
+attributes serialize as child elements wherever the type is used, with no
+element of their own. The `no_root` method of earlier drafts is
+deprecated — omit the `element` declaration instead.
 
 [example]
 ====
 [source,lml]
 ----
-class Studio {
+class StudioLocation {
   attribute location, String
   attribute potter, String
   attribute kiln, String
 
-  xml {
-    no_root
-    map_element "location" { attribute location }
-    map_element "potter" { attribute potter }
-    map_attribute "kiln" { attribute kiln }
+  mapping xml {
+    map_element "location" location
+    map_element "potter" potter
+    map_attribute "kiln" kiln
   }
 }
 ----
 
-An instance of the class `Studio` will be serialized to XML as:
-
-[source,xml]
-----
-<location>Paris</location>
-<potter>Marie</potter>
-<kiln>Electric</kiln>
-----
+`StudioLocation` serializes without its own element wherever embedded.
 ====
 
 
@@ -1469,7 +1463,7 @@ Syntax:
 
 [source,lml]
 ----
-map_element {name} {block}
+map_element "<wire>" <attribute>
 ----
 
 Where,
@@ -1484,8 +1478,8 @@ Where,
 class Studio {
   attribute location, String
 
-  xml {
-    map_element "geo-location" { attribute location }
+  mapping xml {
+    map_element "geo-location" location
   }
 }
 ----
@@ -1508,17 +1502,17 @@ class LocationElement {
   attribute location, String
 
   xml do
-    root "location"
-    map_element "place" { attribute location }
+    element "location"
+    map_element "place" location
   end
 }
 
 class Studio {
   attribute location, LocationElement
 
-  xml {
-    root "studio"
-    map_element "geo" { attribute location }
+  mapping xml {
+    element "studio"
+    map_element "geo" location
   }
 }
 ----
@@ -1540,7 +1534,7 @@ Syntax:
 
 [source,lml]
 ----
-map_attribute {name} {block}
+map_attribute "<wire>" <attribute>
 ----
 
 Where,
@@ -1557,10 +1551,10 @@ class Studio {
   attribute identifier, String
   attribute kiln, String
 
-  xml {
-    map_element "geo-location" { attribute location }
-    map_attribute "identifier" { attribute identifier }
-    map_attribute "kiln" { attribute kiln }
+  mapping xml {
+    map_element "geo-location" location
+    map_attribute "identifier" identifier
+    map_attribute "kiln" kiln
   }
 }
 ----
@@ -1582,7 +1576,7 @@ Syntax:
 
 [source,lml]
 ----
-map_content {block}
+map_content <attribute>
 ----
 
 Where,
@@ -1596,8 +1590,8 @@ Where,
 class Studio {
   attribute location, String
 
-  xml {
-    map_content { attribute location }
+  mapping xml {
+    map_content location
   }
 }
 ----
@@ -1637,9 +1631,9 @@ Where,
 class Studio {
   attribute location, String
 
-  xml {
+  mapping xml {
     namespace "geo" "http://example.com/geo"
-    map_element "location" { attribute location }
+    map_element "location" location
   }
 }
 ----
@@ -1672,12 +1666,13 @@ Syntax:
 
 [source,lml]
 ----
-map {block}
+mapping yaml {
+  map "<wire>" <attribute>
+}
 ----
 
-Where,
-
-`{*block}`:: an optional block
+Where the wire name and the model attribute are juxtaposed; a single term
+(`map <attribute>`) uses the attribute name as the wire name.
 
 [example]
 ====
@@ -1686,8 +1681,8 @@ Where,
 class Studio {
   attribute location, String
 
-  yaml {
-    map "location" { attribute location }
+  mapping yaml {
+    map "location" location
   }
 }
 ----
@@ -1714,7 +1709,7 @@ Syntax:
 
 [source,lml]
 ----
-map_key {name} {block}
+map_key to_instance <attribute>
 ----
 
 Where,
@@ -1733,8 +1728,8 @@ class Studio {
 class StudioCollection < Collection {
   instances Studio
 
-  yaml {
-    map_key "location" { attribute location }
+  mapping yaml {
+    map_key to_instance location
   }
 }
 ----
@@ -1758,7 +1753,7 @@ Syntax:
 
 [source,lml]
 ----
-map_value {name} {block}
+map_value to_instance <attribute>
 ----
 
 Where,
@@ -1777,9 +1772,9 @@ class Studio {
 class StudioCollection < Collection {
   instances Studio
 
-  yaml {
-    map_key "location" { attribute location }
-    map_value "location" { attribute location }
+  mapping yaml {
+    map_key to_instance location
+    map_value to_instance location
   }
 }
 ----
