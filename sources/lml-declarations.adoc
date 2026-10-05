@@ -21,6 +21,55 @@ fields, grammar-backed string formats, and enum member payloads including
 table-driven members. The base models-and-instances syntax is specified in
 RS 3001 and the accompanying `lutaml-lml` syntax guide.
 
+== Serialization mappings
+
+Serialization mappings bind classes to their serialization wire forms.
+They are declared as **sibling constructs linked to their class by
+name** — `mapping <format> <class>` — or inside the class body, where
+the enclosing class is the implied target.
+
+```lml
+models Ceramics {
+  namespace CeramicsNs {
+    uri "http://example.com/ceramics"
+    prefix "cer"
+  }
+
+  class Ceramic {
+    attribute location, String
+    attribute kiln, String
+    attribute notes, String
+  }
+}
+
+mapping xml Ceramic {
+  element "ceramic"
+  namespace CeramicsNs
+  map_element "location" location
+  map_attribute "kiln" kiln
+  map_content notes
+}
+
+mapping key_value Ceramic {
+  map "full-name" location
+  map_key to_instance key_name
+  map_value as_attribute values
+}
+```
+
+XML mapping rules follow the host implementation's model: `element`
+declares the element name, `namespace <reference>` applies a context
+namespace, `map_element`/`map_attribute`/`map_content` bind wire names
+to model attributes, and `mixed_content` declares mixed content. The
+key-value family (`yaml`, `json`, `toml`, `key_value`) uses `map`,
+`map_key to_instance`, and `map_value to_instance`/`as_attribute`.
+
+Namespaces are declared once in the enclosing `models` scope; mappings
+reference them by name. When the scope declares exactly one namespace
+it applies implicitly; several namespaces without an explicit reference
+is a compile-time error. Prefix-less namespaces act as the default
+namespace (`xmlns`).
+
 == Mapping blocks
 
 A `mapping` block declares serialization wire names for a class's
