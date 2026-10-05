@@ -1,0 +1,168 @@
+= LutaML LML -- declarations reference
+:edition: 1.0
+:doctype: standard
+:docnumber: RS 3010
+:status: working-draft
+:committee: LutaML
+:committee-type: technical
+:fullname: Ronald Tse
+:surname: Tse
+:publisher: Ribose Inc.
+:mn-document-class: ribose
+:mn-output-extensions: xml,html,pdf,rxl
+:lang: en
+
+== Scope
+
+This document specifies the *declaration constructs* of the LutaML Model
+Language (LML) as implemented by `lutaml-lml` 0.1.8: serialization mapping
+blocks, instance-type overrides, attribute defaults and nil policy, derived
+fields, grammar-backed string formats, and enum member payloads including
+table-driven members. The base models-and-instances syntax is specified in
+RS 3001 and the accompanying `lutaml-lml` syntax guide.
+
+== Mapping blocks
+
+A `mapping` block declares serialization wire names for a class's
+attributes — the serialized key differs from the attribute name.
+
+[source,lml]
+----
+class Widget {
+  attribute name { type String cardinality 1 }
+  mapping yaml { map "full-name", to: "name" }
+}
+----
+
+[cols="1,3"]
+|===
+| Part | Meaning
+
+| `yaml` | target format; one block per format (`yaml`, `xml`, `json`, `toml`, `csv`)
+| `map "{wire}", to: "{attribute}"` | a wire-name entry; `{wire}` is the serialized key, `{attribute}` the model attribute
+|===
+
+The compiler emits the corresponding lutaml-model mapping block. Multiple
+`mapping` blocks may appear; each format is emitted once.
+
+== Instance-type override (`isa`)
+
+The `isa` keyword overrides the type of an instance; a `type` attribute is
+ordinary data.
+
+[source,lml]
+----
+instance S158Checks {
+  isa ValidationChecks
+  type = Type::standard
+}
+----
+
+`{type}`:: the overridden (instance-of) type
+`type = ...`:: an ordinary data attribute — identifier-kind fields named
+`type` remain usable as data
+
+The bare `instance {Type} { ... }` header form is unchanged.
+
+== Attribute defaults and nil policy
+
+Inside an attribute block:
+
+[source,lml]
+----
+attribute originator {
+  type String
+  cardinality 0..1
+  default "iso"
+  render_nil false
+}
+----
+
+`default "{literal}"`:: literal-only default; applied only when the input is
+*absent* — an explicit nil stays explicit. A declared literal wins over the
+optional-marker nil implied by a `0..1` cardinality.
+`render_nil {true|false}`:: nil policy on serialization; the name mirrors the
+lutaml-model mapping option, and the compiler applies it to the key-value
+mapping rules.
+
+== Derived fields
+
+[source,lml]
+----
+derive urn: String
+----
+
+Declares the field's existence and type; the field participates in mappings
+like any attribute. The *computation* is bound by the binder from the grammar
+artifact's derive specifications — LML never defines computation.
+
+== Grammar-backed string formats
+
+[source,lml]
+----
+class IsoIdentifier {
+  string_format :pubid_iso {
+    artifact "pubid/iso"
+    root "iso_identifier"
+  }
+}
+----
+
+Declares that instances of the class serialize to and from an identifier
+string parsed by a grammar artifact. The declaration is a thin reference:
+the artifact (a compiled grammar with typed bindings) is the single source
+of truth for capture maps and render specifications — LML never duplicates
+them.
+
+[cols="1,3"]
+|===
+| Part | Meaning
+
+| `:pubid_iso` | the registered format name (per flavor — flavors differ in grammar, not just data)
+| `artifact "{ref}"` | artifact reference, resolved through the compiler's `artifact_paths` map or `default_artifact`
+| `root "{entry}"` | the grammar entry rule
+|===
+
+Registration defines `from_{format}` on the compiled model, and the format
+is registered in the single lutaml-model `FormatRegistry`. A `models`-block
+`string_format` acts as the default for classes without their own.
+
+== Enum member payloads
+
+[source,lml]
+----
+enum Stage {
+  member_fields { abbreviation String  urn_segment String }
+
+  draft10   { abbreviation = "WD"  urn_segment = "wd" }
+  published { abbreviation = "IS"  urn_segment = "published" }
+}
+----
+
+`member_fields { ... }`:: the typed payload schema shared by all members
+`{member} { {field} = {value} ... }`:: inline payload lines, validated
+against the schema at compile time — an undeclared field is an error, a
+missing optional field is nil
+
+== Table-driven enums
+
+[source,lml]
+----
+enum Stage {
+  member_fields { abbreviation String  urn_segment String }
+  from_table "stages" {
+    artifact "pubid/iso"
+  }
+}
+----
+
+Members are expanded at compile time from a table in a grammar artifact's
+`tables` section — the same data source that preprocessing lookups and render
+conditions read. Rows are validated against `member_fields`: an unknown field
+is an error; a missing optional field is nil; the member name comes from the
+row's `name` column. Expansion is compile-time, so materialization is
+deterministic and no data dependency reaches consumer runtimes.
+
+`from_table "{name}"`:: the table name within the artifact
+`artifact "{ref}"`:: the artifact reference; resolved through the compiler's
+`artifact_paths` map or `default_artifact`
