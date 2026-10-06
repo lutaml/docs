@@ -215,3 +215,56 @@ deterministic and no data dependency reaches consumer runtimes.
 `from_table "{name}"`:: the table name within the artifact
 `artifact "{ref}"`:: the artifact reference; resolved through the compiler's
 `artifact_paths` map or `default_artifact`
+
+== Operations
+
+A class may carry operations (methods) as structural metadata: a name,
+an optional symbol visibility, an optional parameter list, an optional
+return type with cardinality, and property modifiers. Operations carry
+no executable semantics; they exist so that UML models round-trip
+through LML without losing their behavioral surface (Enterprise
+Architect and XMI carry methods on every class).
+
+Syntax:
+
+[source,lml]
+----
+class {name} {
+  {visibility} {operation-name}({*parameter}): {return-type}[{cardinality}] {*property}
+}
+----
+
+Where,
+
+`{visibility}`:: optional; one of `+` (public), `-` (private), `#` (protected), `~` (package); default `+`
+`{operation-name}`:: the name of the operation
+`{*parameter}`:: zero or more parameters, comma-separated
+`{return-type}`:: optional; the declared return type
+`{cardinality}`:: optional; the cardinality of the returned collection
+`{*property}`:: optional; comma-separated property modifiers (for example `ordered`, `unique`, `query`)
+
+A parameter is:
+
+[source,lml]
+----
+[{direction} ]{parameter-name}[: {parameter-type}][ = {default}]
+----
+
+Where,
+
+`{direction}`:: optional; one of `in`, `out`, `inout`; default `in`
+`{parameter-name}`:: the name of the parameter
+`{parameter-type}`:: optional; the declared parameter type
+`{default}`:: optional; the parameter's default value
+
+[example]
+====
+[source,lml]
+----
+class Ceramic {
+  + getGlazeType(glazeCode: CharacterString = "123"): GlazeType[1..*] {ordered, unique, query}
+  - simpleOp(): String
+  multi(a: String, b: Integer = 5, in c: Boolean)
+}
+----
+====

@@ -602,6 +602,74 @@ class Studio {
 ----
 ====
 
+[[declaration-modifiers]]
+=== Declaration modifiers
+
+A declaration modifier is a keyword that qualifies a declaration. The
+modifiers are:
+
+* visibility: `public`, `private`, `protected`, `package`
+* specializer: `abstract`, `interface`
+
+`public` visibility is the default. The `package` visibility level
+corresponds to the UML package visibility (`~`) of attributes.
+
+A modifier is expressed canonically as a declaration inside the block:
+
+[source,lml]
+----
+class {name} {
+  visibility {level}
+}
+
+class {name} {
+  abstract true
+}
+----
+
+Where,
+
+`{level}`:: one of `public`, `private`, `protected`, `package`
+
+The keyword prefix before a declaration is a shortcut that expands to
+the block declarations:
+
+[source,lml]
+----
+{modifier} {declaration} {name} {block}
+----
+
+[example]
+====
+This example declares a private abstract class.
+
+[source,lml]
+----
+private class Glaze {
+  abstract true
+}
+----
+====
+
+expands to:
+
+[example]
+====
+[source,lml]
+----
+class Glaze {
+  visibility private
+  abstract true
+}
+----
+====
+
+Modifiers apply to the `class`, `enum`, `data_type`, `primitive` and
+`package` declarations.
+
+When both the prefix and the block declaration are present, the block
+declaration prevails.
+
 === Comment
 
 ==== General
@@ -856,15 +924,21 @@ Within the block, the following declarations are available:
 The `class` construct is used to define a class which is a collection of
 attributes.
 
+A class declaration may carry declaration modifiers
+(<<declaration-modifiers>>) before the declaration or as block
+declarations, and its block may contain the canonical `visibility` and
+`abstract` declarations.
+
 Syntax:
 
 [source,lml]
 ----
-class {name} {block}
+{modifier} class {name} {block}
 ----
 
 Where,
 
+`{modifier}`:: zero or more declaration modifiers
 `{name}`:: the name of the class
 `{*block}`:: an optional block
 
