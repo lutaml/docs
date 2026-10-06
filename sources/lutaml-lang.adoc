@@ -606,7 +606,13 @@ class Studio {
 
 ==== General
 
-A comment is a line of text that is ignored by the processor.
+A comment is text that is ignored by the processor.
+
+Comments are lexical trivia: they are consumed and discarded between
+any two tokens of the language — at the start of a document, between
+declarations, between a keyword and its name, and at the end of a line
+or the end of input. A comment-opening sequence inside a quoted string
+does not start a comment.
 
 ==== Single-line comment
 
