@@ -91,8 +91,7 @@ class Widget {
 | `map "{wire}", to: "{attribute}"` | a wire-name entry; `{wire}` is the serialized key, `{attribute}` the model attribute
 |===
 
-The compiler emits the corresponding lutaml-model mapping block. Multiple
-`mapping` blocks may appear; each format is emitted once.
+The compiler emits the corresponding lutaml-model mapping block. Multiple `mapping` blocks may appear; each format is emitted once.
 
 == Instance-type override (`isa`)
 
@@ -107,9 +106,7 @@ instance S158Checks {
 }
 ----
 
-`{type}`:: the overridden (instance-of) type
-`type = ...`:: an ordinary data attribute — identifier-kind fields named
-`type` remain usable as data
+`{type}`:: the overridden (instance-of) type `type = ...`:: an ordinary data attribute — identifier-kind fields named `type` remain usable as data
 
 The bare `instance {Type} { ... }` header form is unchanged.
 
@@ -173,8 +170,7 @@ them.
 |===
 
 Registration defines `from_{format}` on the compiled model, and the format
-is registered in the single lutaml-model `FormatRegistry`. A `models`-block
-`string_format` acts as the default for classes without their own.
+is registered in the single lutaml-model `FormatRegistry`. A `models`-block `string_format` acts as the default for classes without their own.
 
 == Enum member payloads
 
@@ -188,8 +184,7 @@ enum Stage {
 }
 ----
 
-`member_fields { ... }`:: the typed payload schema shared by all members
-`{member} { {field} = {value} ... }`:: inline payload lines, validated
+`member_fields { ... }`:: the typed payload schema shared by all members `{member} { {field} = {value} ... }`:: inline payload lines, validated
 against the schema at compile time — an undeclared field is an error, a
 missing optional field is nil
 
@@ -205,16 +200,13 @@ enum Stage {
 }
 ----
 
-Members are expanded at compile time from a table in a grammar artifact's
-`tables` section — the same data source that preprocessing lookups and render
+Members are expanded at compile time from a table in a grammar artifact's `tables` section — the same data source that preprocessing lookups and render
 conditions read. Rows are validated against `member_fields`: an unknown field
 is an error; a missing optional field is nil; the member name comes from the
 row's `name` column. Expansion is compile-time, so materialization is
 deterministic and no data dependency reaches consumer runtimes.
 
-`from_table "{name}"`:: the table name within the artifact
-`artifact "{ref}"`:: the artifact reference; resolved through the compiler's
-`artifact_paths` map or `default_artifact`
+`from_table "{name}"`:: the table name within the artifact `artifact "{ref}"`:: the artifact reference; resolved through the compiler's `artifact_paths` map or `default_artifact`
 
 == Operations
 
@@ -237,11 +229,7 @@ class {name} {
 Where,
 
 `{visibility}`:: optional; one of `+` (public), `-` (private), `#` (protected), `~` (package); default `+`
-`{operation-name}`:: the name of the operation
-`{*parameter}`:: zero or more parameters, comma-separated
-`{return-type}`:: optional; the declared return type
-`{cardinality}`:: optional; the cardinality of the returned collection
-`{*property}`:: optional; comma-separated property modifiers (for example `ordered`, `unique`, `query`)
+`{operation-name}`:: the name of the operation `{*parameter}`:: zero or more parameters, comma-separated `{return-type}`:: optional; the declared return type `{cardinality}`:: optional; the cardinality of the returned collection `{*property}`:: optional; comma-separated property modifiers (for example `ordered`, `unique`, `query`)
 
 A parameter is:
 
@@ -253,9 +241,7 @@ A parameter is:
 Where,
 
 `{direction}`:: optional; one of `in`, `out`, `inout`; default `in`
-`{parameter-name}`:: the name of the parameter
-`{parameter-type}`:: optional; the declared parameter type
-`{default}`:: optional; the parameter's default value
+`{parameter-name}`:: the name of the parameter `{parameter-type}`:: optional; the declared parameter type `{default}`:: optional; the parameter's default value
 
 [example]
 ====

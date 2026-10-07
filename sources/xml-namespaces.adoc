@@ -209,8 +209,7 @@ The behavior is as follows:
 
 .. If the target XML attribute is to be a prefixed XML attribute, the namespace
 and the prefix must be provided either by the target attribute model (through
-model-level `namespace` and `prefix`) or the mapping (through mapping-level
-`namespace` and `prefix`). The namespace declaration with prefix will be applied
+model-level `namespace` and `prefix`) or the mapping (through mapping-level `namespace` and `prefix`). The namespace declaration with prefix will be applied
 to the XML element that contains the attribute, and the XML attribute will be
 prefixed.
 

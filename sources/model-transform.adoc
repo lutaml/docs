@@ -906,11 +906,9 @@ class NewDigitalTimepiece < Lutaml::Model::Serializable
 end
 ----
 
-Here, the `UnstructuredDateTimeWithOffset` model is a value, and the
-`StructuredDateTimeWithOffset` model is a model.
+Here, the `UnstructuredDateTimeWithOffset` model is a value, and the `StructuredDateTimeWithOffset` model is a model.
 
-A cross-model-value transform is defined to transform between
-`UnstructuredDateTimeWithOffset` (value) and `StructuredDateTimeWithOffset`
+A cross-model-value transform is defined to transform between `UnstructuredDateTimeWithOffset` (value) and `StructuredDateTimeWithOffset`
 (model).
 
 [source,ruby]
@@ -1008,8 +1006,7 @@ destination is an attribute accessible at root.
 +
 [example]
 ====
-In the mapping, a `time` path is a root attribute, referring to the attribute of
-`{source|target}.time`.
+In the mapping, a `time` path is a root attribute, referring to the attribute of `{source|target}.time`.
 ====
 
 . Creating the mapping at the model-to-model level, where both source and
@@ -1034,8 +1031,7 @@ practical when the source and destination models are not managed or owned by the
 party performing the transformation.
 
 To illustrate such a scenario, we add one more model layer to the same model as
-in <<nested-cross-model-value-transformation>> to define `ComputerClock` and
-`WallClock`. Then move the transformation logic to the model level.
+in <<nested-cross-model-value-transformation>> to define `ComputerClock` and `WallClock`. Then move the transformation logic to the model level.
 
 [source,ruby]
 ----

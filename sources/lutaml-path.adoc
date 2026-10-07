@@ -253,8 +253,7 @@ A path segment is a single element or a pattern that matches a single element.
 
 The hierarchy separators are used to separate path segments within a path:
 
-`::`:: for model definitions
-`.`:: for attributes and instance data.
+`::`:: for model definitions `.`:: for attributes and instance data.
 
 The separators can be escaped with a backslash inside an expression.
 Single colons (`:`) are not used as separators and behave as part of the

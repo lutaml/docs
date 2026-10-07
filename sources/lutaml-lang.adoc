@@ -219,8 +219,7 @@ relationships of data elements.
 Serialization data modeling focuses on low-level details of how data is
 represented in a particular format.
 
-For example, a conceptual model may define that a `Date` object has
-`year`, `month`, `day` attributes, and each of them
+For example, a conceptual model may define that a `Date` object has `year`, `month`, `day` attributes, and each of them
 are of an `Integer` type and potentially the numbering constraints for each
 attribute, and that there are certain restrictions to what the attributes can be
 at an attribute level (valid values of `month` range from 1 to 12),
@@ -566,9 +565,7 @@ Syntax:
 
 Where,
 
-`{declaration}`:: the declaration keyword
-`{*argument}`:: zero or more arguments
-`{*block}`:: an optional blocks
+`{declaration}`:: the declaration keyword `{*argument}`:: zero or more arguments `{*block}`:: an optional blocks
 
 An argument is a string, which can be a primitive value or a reference to another
 object.
@@ -664,8 +661,7 @@ class Glaze {
 ----
 ====
 
-Modifiers apply to the `class`, `enum`, `data_type`, `primitive` and
-`package` declarations.
+Modifiers apply to the `class`, `enum`, `data_type`, `primitive` and `package` declarations.
 
 When both the prefix and the block declaration are present, the block
 declaration prevails.
@@ -780,8 +776,7 @@ definition {text}
 
 Where,
 
-`{text}`:: the description text
-`{block}`:: description text block
+`{text}`:: the description text `{block}`:: description text block
 
 [example]
 ====
@@ -802,8 +797,7 @@ definition {block}
 
 Where,
 
-`{text}`:: the description text
-`{block}`:: description text block
+`{text}`:: the description text `{block}`:: description text block
 
 [example]
 ====
@@ -853,8 +847,7 @@ package {name} {block}
 
 Where,
 
-`{name}`:: the name of the package
-`{*block}`:: an optional block
+`{name}`:: the name of the package `{*block}`:: an optional block
 
 [example]
 ====
@@ -926,8 +919,7 @@ attributes.
 
 A class declaration may carry declaration modifiers
 (<<declaration-modifiers>>) before the declaration or as block
-declarations, and its block may contain the canonical `visibility` and
-`abstract` declarations.
+declarations, and its block may contain the canonical `visibility` and `abstract` declarations.
 
 Syntax:
 
@@ -938,9 +930,7 @@ Syntax:
 
 Where,
 
-`{modifier}`:: zero or more declaration modifiers
-`{name}`:: the name of the class
-`{*block}`:: an optional block
+`{modifier}`:: zero or more declaration modifiers `{name}`:: the name of the class `{*block}`:: an optional block
 
 [example]
 ====
@@ -975,8 +965,7 @@ class TemperatureWithUnit {
 ----
 ====
 
-Class attributes can be restricted to a specific set of values using the
-`values` declaration.
+Class attributes can be restricted to a specific set of values using the `values` declaration.
 
 [example]
 ====
@@ -1121,9 +1110,7 @@ attribute {name}, {type} {block}
 
 Where,
 
-`{name}`:: the name of the attribute
-`{type}`:: the type of the attribute
-`{*block}`:: an optional block
+`{name}`:: the name of the attribute `{type}`:: the type of the attribute `{*block}`:: an optional block
 
 [example]
 ====
@@ -1156,8 +1143,7 @@ attribute {name}, {type} { cardinality {min}..{max} }
 
 Where,
 
-`{min}`:: the minimum number of values
-`{max}`:: the maximum number of values
+`{min}`:: the minimum number of values `{max}`:: the maximum number of values
 
 
 [example]
@@ -1293,8 +1279,7 @@ value {name} {block}
 
 Where,
 
-`{name}`:: the name of the value
-`{*block}`:: an optional block
+`{name}`:: the name of the value `{*block}`:: an optional block
 
 [example]
 ====
@@ -1323,10 +1308,7 @@ enum {name} { // enum block
 
 Where,
 
-`{name}`:: the name of the enum
-`{*block}`:: an optional block
-`{value-name}`:: the name of the value
-`{*value-block}`:: an optional block
+`{name}`:: the name of the enum `{*block}`:: an optional block `{value-name}`:: the name of the value `{*value-block}`:: an optional block
 
 [example]
 ====
@@ -1548,8 +1530,7 @@ map_element "<wire>" <attribute>
 
 Where,
 
-`{name}`:: the name of the element
-`{*block}`:: an optional block
+`{name}`:: the name of the element `{*block}`:: an optional block
 
 [example]
 ====
@@ -1619,8 +1600,7 @@ map_attribute "<wire>" <attribute>
 
 Where,
 
-`{name}`:: the name of the attribute
-`{*block}`:: an optional block
+`{name}`:: the name of the attribute `{*block}`:: an optional block
 
 [example]
 ====
@@ -1701,8 +1681,7 @@ namespace {prefix} {uri}
 
 Where,
 
-`{prefix}`:: the namespace prefix
-`{uri}`:: the namespace URI (optional)
+`{prefix}`:: the namespace prefix `{uri}`:: the namespace URI (optional)
 
 [example]
 ====
@@ -1794,8 +1773,7 @@ map_key to_instance <attribute>
 
 Where,
 
-`{name}`:: the name of the key
-`{*block}`:: an optional block
+`{name}`:: the name of the key `{*block}`:: an optional block
 
 [example]
 ====
@@ -1838,8 +1816,7 @@ map_value to_instance <attribute>
 
 Where,
 
-`{name}`:: the name of the value
-`{*block}`:: an optional block
+`{name}`:: the name of the value `{*block}`:: an optional block
 
 [example]
 ====
@@ -1891,8 +1868,7 @@ instance {name} {block}
 
 Where,
 
-`{name}`:: the name of the instance
-`{*block}`:: an optional block
+`{name}`:: the name of the instance `{*block}`:: an optional block
 
 [example]
 ====
@@ -1960,8 +1936,7 @@ instances {name} {block}
 
 Where,
 
-`{name}`:: the name of the instance
-`{*block}`:: an optional block
+`{name}`:: the name of the instance `{*block}`:: an optional block
 
 [example]
 ====
