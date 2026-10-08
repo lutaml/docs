@@ -1,0 +1,81 @@
+= Model evolution
+
+== Introduction
+
+This document defines how LutaML models evolve over time. It covers the
+version surfaces, what each change level means for consumers, and the
+co-release discipline for keeping them aligned.
+
+== Version surfaces
+
+A LutaML model has three independently versioned surfaces:
+
+* Grammar artifact version: the compiled PARG grammar. Governed by
+  `lutaml-lml`'s artifact version (semver; capture renames/removals =
+  major, new alternatives = minor, literal fixes = patch).
+* Model version: declared on the `models` header
+  (`models <Name> version "x.y.z"`, per RS 3001 lutaml-lml#16). This is
+  the *model schema* version — what downstream code generators
+  (pubid-ts, pubid-rs) materialize from.
+* Corpus version: the conformance corpus (fixtures) that verify model
+  compatibility. Bumped in lockstep with model version.
+
+== Change levels
+
+=== Patch (x.y.z -> x.y.z+1)
+
+Safe changes that require no consumer action:
+
+* grammar literal fixes (typo corrections, error message improvements)
+* documentation updates
+* corpus fixture additions that do not change model semantics
+
+=== Minor (x.y.z -> x.y.(z+1))
+
+Additions that preserve backward compatibility:
+
+* new `class`, `enum`, `data_type`, `primitive`, `package`, or
+  `association` declarations in existing models
+* new attributes on existing classes (consumers must tolerate unknown
+  fields)
+* new `values` members on existing enums
+* new grammar alternatives (previously invalid LML text now parses)
+
+=== Major (x.y.z -> x.(y+1).0)
+
+Breaking changes that require consumer migration:
+
+* removal or rename of a class, attribute, or enum value
+* change of an attribute's type or cardinality
+* grammar capture renames or removals (the artifact artifact changes
+  shape)
+* semantic changes to hydration behavior
+
+== Co-release discipline
+
+The model schema version, corpus version, and grammar artifact version
+move **together** — one release, no mixed states.
+
+A co-release consists of:
+
+. a `models <Name> version "x.y.z"` bump (if the model schema changed)
+. a conformance corpus update reflecting the change
+. a grammar artifact rebuild if the grammar changed
+. a semver-consistent `lutaml-lml` release
+
+Conformance runners must verify all three versions agree before running
+the suite.
+
+== Version declaration
+
+The version is declared in the LML source itself:
+
+[source,lml]
+----
+models PubidModels version "1.0.0" {
+  class IsoIdentifier { }
+}
+----
+
+This is recorded on `Document#model_versions` (name -> version) and is
+the single source of truth for the model schema version.
