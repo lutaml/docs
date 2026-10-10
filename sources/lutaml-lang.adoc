@@ -565,6 +565,9 @@ backslash followed by any other character does not form a string value.
 An empty string is distinct from an absent value: `""` denotes a
 present string of length zero.
 
+The `null` literal is a data value: it appears wherever a value is
+written, including as an element of a list.
+
 [example]
 ====
 [source,lml]
