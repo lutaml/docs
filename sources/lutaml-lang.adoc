@@ -550,7 +550,38 @@ LutaML supports the following primitive values:
 * `Time` (e.g., `2024-01-01T12:00:00+00:00`),
 * `Decimal` (e.g., `3.14159`),
 * `Hash` (e.g., `{ "key": "value" }`)
+* `Null` (e.g., `null`)
 
+
+=== String values
+
+A string value is delimited by double quotes or by single quotes.
+
+The escape sequences `\"` and `\\` are recognized inside both quote
+kinds: `\"` denotes the quote character that delimits the string, and
+`\\` denotes a backslash. No other escape sequence is defined; a
+backslash followed by any other character does not form a string value.
+
+An empty string is distinct from an absent value: `""` denotes a
+present string of length zero.
+
+[example]
+====
+[source,lml]
+----
+class Glaze {
+  attribute name, String
+  attribute description, String
+  attribute note, String
+}
+
+instance "Glaze" {
+  name = "Raku \"kiln\" fired"          // embedded quotes
+  description = 'say "hi" and \'bye\''  // the other quote kind
+  note = ""                                // present, empty
+}
+----
+====
 
 === Declaration, arguments and blocks
 
@@ -1858,6 +1889,10 @@ An `instance` construct is used to define an instance of a class.
 
 To assign values to attributes, the attribute name is followed by an equal sign
 and the value.
+
+An optional attribute without an assignment is absent. An explicit
+`null` assignment denotes the null value, and an empty string `""`
+denotes a present, empty string.
 
 Syntax:
 
