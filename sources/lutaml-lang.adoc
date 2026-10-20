@@ -2198,5 +2198,7 @@ Canonicalization properties.::
 
 Canonicalizing a document is deterministic: the same document model always
 renders to the same text, and rendering a canonical document again yields
-the same text. Comment *kind* is not preserved (all comments render as
-line comments); comment content is.
+the same text. Comments are lexical trivia and are not retained by the
+document model, so a canonical rendering does not reproduce them. Where a
+processor retains a comment in its document model, canonical rendering
+preserves the comment's content but not necessarily its original kind.
