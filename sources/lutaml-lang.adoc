@@ -557,10 +557,11 @@ LutaML supports the following primitive values:
 
 A string value is delimited by double quotes or by single quotes.
 
-The escape sequences `\"` and `\\` are recognized inside both quote
-kinds: `\"` denotes the quote character that delimits the string, and
-`\\` denotes a backslash. No other escape sequence is defined; a
-backslash followed by any other character does not form a string value.
+Exactly two escape sequences are recognized in each quote kind: the
+delimiter escape (`\"` inside double quotes, `\'` inside single quotes)
+and `\\`, which denotes a backslash. No other escape sequence is
+defined; a backslash followed by any other character does not form a
+string value.
 
 An empty string is distinct from an absent value: `""` denotes a
 present string of length zero.
@@ -2202,3 +2203,71 @@ the same text. Comments are lexical trivia and are not retained by the
 document model, so a canonical rendering does not reproduce them. Where a
 processor retains a comment in its document model, canonical rendering
 preserves the comment's content but not necessarily its original kind.
+
+== Annex: Value semantics
+
+This annex states the value model formally. It is normative and codifies
+the rules given under _String values_, _Null_, and _Attribute_.
+
+=== The value lattice
+
+An attribute value position is in exactly one of three states:
+
+[cols="1,2",options="header"]
+|===
+|State |Wire form
+|absent |the attribute is not assigned in the instance
+|null |`null`
+|present-empty |`""`
+|===
+
+The states are pairwise distinct: `null` denotes the null value, `""`
+denotes a present string of length zero, and an unassigned attribute is
+absent. No state is an alias for another. A processor preserves the
+distinction across parse and emit operations.
+
+=== The escape algebra
+
+A quoted string body is the sequence between the opening and closing
+quote. Within double quotes exactly two escapes are recognized: `\"`
+and `\\`. Within single quotes exactly two escapes are recognized:
+`\'` and `\\`. The mapping is:
+
+[cols="1,1",options="header"]
+|===
+|Body |Value
+|`a\"b` (double-quoted) |`a"b`
+|`a\'b` (single-quoted) |`a'b`
+|`a\\b` |`a\b`
+|the empty body |the empty string
+|===
+
+The grammar accepts no backslash before any other character, so
+_unescape_ is total over grammar-accepted bodies and
+_unescape(escape(value)) = value_ for every representable value. The
+representable set is every string over the language's character set;
+escape is injective over that set.
+
+=== The padding law
+
+A quoted body is verbatim: spaces and tabs inside the quotes are part of
+the value, including leading and trailing padding. Name and type tokens
+are interior-bounded: a token is a run of token characters optionally
+followed by spaces and another run, never a trailing space. A processor
+does not strip quoted bodies.
+
+=== The key and value symmetry law
+
+Attribute keys and attribute values admit the same bare-word predicate:
+a bare word is a non-empty run of `[A-Za-z0-9_]`. Every other key or
+value string is written in quotes with the escapes above. Parsed from
+the same quoting form, a key and a value denote the same string. A
+canonical rendering may choose the quoted form where a bare word is
+admissible; it does not emit a bare word outside the predicate.
+
+The corresponding corpus fixtures are `24_null_and_empty.lml` (the
+lattice), `25_string_escapes.lml` (the escape algebra and padding), and
+`26_quoted_keys.lml` (key and value symmetry), under
+`spec/fixtures/rs3001/` in the lutaml-lml repository. The executable laws
+are L1 (value fidelity), L2 (key fidelity), L3 (document semantics), and
+L4 (idempotence) in `spec/lutaml/lml/property_laws_spec.rb`.
