@@ -2146,3 +2146,57 @@ instances Glazes {
   }
 }
 ----
+
+== Canonical form
+
+[NOTE]
+--
+This section is informative. It defines a canonical rendering of a document:
+the form produced by a conforming formatter. Documents are not required to
+be canonical; canonicalization is a formatting operation with defined
+results, not a validity constraint.
+--
+
+The canonical rendering of a document observes the following rules.
+
+Member order.::
+
+Because information models are unordered across member kinds, the canonical
+group order is: `requires`, namespaces, packages (each package's members
+recurse in the same order), classes, enums, data types, primitives,
+serialization mappings, associations, diagrams, and instances. Within a
+group, declaration order is preserved.
+
+Layout.::
+
+Indentation is two spaces per level. One blank line separates members at
+every level. A document ends with a single trailing newline.
+
+Attribute forms.::
+
+An attribute with only a name and a type and the default cardinality
+renders in the terse form `attribute {name}, {type}`. Any other attribute
+renders in the block form, with members in this order: type, cardinality,
+value set, default, pattern, then remaining properties sorted by name.
+Cardinality renders `[a..b]`; an unbounded maximum renders `n`; `[0..1]`
+is the default and is omitted.
+
+Modifiers and quoting.::
+
+Visibility renders only when not public. Values and keys quote alike: bare
+only for runs of `[A-Za-z0-9_]`, otherwise double quotes with the escapes
+defined under _String values_.
+
+Null and absence.::
+
+In model definitions an optional member that is nil is omitted entirely.
+In instance data the value rules apply: `null` denotes the null value,
+`""` a present empty string, and an unassigned optional attribute is
+absent.
+
+Canonicalization properties.::
+
+Canonicalizing a document is deterministic: the same document model always
+renders to the same text, and rendering a canonical document again yields
+the same text. Comment *kind* is not preserved (all comments render as
+line comments); comment content is.
