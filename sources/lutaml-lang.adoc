@@ -533,6 +533,30 @@ The core syntax of LutaML is based on the following constructs:
 * block
 * comment
 
+=== Language version
+
+A document may declare the version of this language that it is written
+in:
+
+[source,lml]
+----
+lml "1.0"
+
+class Ceramic {
+}
+----
+
+The declaration is optional. When present it is the first construct of
+the document, before any other declaration, and consists of the keyword
+`lml` followed by the version string in quotes.
+
+The version is a dotted numeric version. A processor compares the
+declared version with the version of the grammar it implements, which is
+the version recorded in that grammar's compiled artifact. A document
+declaring a newer version is not rejected: the processor reports a
+warning and continues with the grammar it implements. A document without
+a declaration is processed with the implemented grammar.
+
 === Primitive values
 
 Primitive values are the basic building blocks of LutaML.
@@ -2163,10 +2187,11 @@ The canonical rendering of a document observes the following rules.
 Member order.::
 
 Because information models are unordered across member kinds, the canonical
-group order is: `requires`, namespaces, packages (each package's members
-recurse in the same order), classes, enums, data types, primitives,
-serialization mappings, associations, diagrams, and instances. Within a
-group, declaration order is preserved.
+order is: the language-version prologue when the document declares one,
+then `requires`, namespaces, packages (each package's members recurse in
+the same order), classes, enums, data types, primitives, serialization
+mappings, associations, diagrams, and instances. Within a group,
+declaration order is preserved.
 
 Layout.::
 
