@@ -8,6 +8,7 @@ metanorma:
       - sources/model-collection.adoc
       - sources/model-transform.adoc
       - sources/model-register.adoc
+      - sources/model-evolution.adoc
       - sources/xml-namespaces.adoc
 
   collection:

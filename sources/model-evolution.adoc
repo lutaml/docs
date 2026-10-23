@@ -79,3 +79,111 @@ models PubidModels version "1.0.0" {
 
 This is recorded on `Document#model_versions` (name -> version) and is
 the single source of truth for the model schema version.
+
+== Runtime model evolution (lutaml-model DSL)
+
+The LML governance above governs the *artifact*. The lutaml-model Ruby
+DSL implements the *runtime* counterpart: models declare their version,
+families of versioned classes share a document detector, and explicit
+wire-level steps migrate documents between versions.
+
+=== Version declaration
+
+[source,ruby]
+----
+class MyModel < Lutaml::Model::Serializable
+  version 1
+  attribute :name, :string
+end
+
+class MyModelV2 < MyModel
+  version 2
+  attribute :created, Lutaml::Model::Type::DateTime
+end
+----
+
+`version` stamps the model schema version. Subclasses inherit the
+nearest ancestor's version; `MyModelV2.model_version` reads it. A
+*family* is the ancestor chain of version-declared classes.
+
+=== Version detection
+
+A family head declares a detector that receives the parsed document and
+returns the version the document was written against:
+
+[source,ruby]
+----
+class MyModelV2 < MyModel
+  version 2
+  detect_version do |doc|
+    doc["schema_version"] ? doc["schema_version"].to_i : 1
+  end
+end
+----
+
+`from_json`, `from_yaml` and the other key-value entry points route to
+the detected version's class before parsing, raising
+`UnsupportedVersionError` when no family member declares the version.
+Detection is opt-in: without a detector, parsing is unchanged.
+
+=== Migration steps
+
+An `evolution from:` block declares wire-level steps on the target
+(newest) class. Steps apply in declaration order to a copy of the
+source document's wire hash; the evolved hash then parses as the target
+model.
+
+[cols="3,2,5"]
+|===
+| Step | Arguments | Semantics
+
+| `wire_rename`
+| `from_key, to:`
+| Accept a former wire name for the current attribute; the current
+name wins when both appear. Not re-emitted on serialization.
+
+| `wire_move`
+| `from_key, to:`
+| Relocate a former top-level key into a nested position (dot path or
+segment array); intermediates are created.
+
+| `wire_merge`
+| `from_keys, to:, with:`
+| Combine former keys into one. `with:` receives the source values in
+declared order; without it, the sources must all be hashes and are
+merged in order.
+
+| `wire_drop`
+| `*keys`
+| Retire former keys explicitly.
+|===
+
+[source,ruby]
+----
+class MyModelV2 < MyModel
+  version 2
+
+  evolution from: MyModel do
+    wire_rename "author", to: "creator"
+    wire_merge %w[first_name last_name], to: "full_name",
+               with: ->(first, last) { [first, last].compact.join(" ") }
+    wire_drop "deprecated_field"
+  end
+end
+
+doc = MyModelV2.evolve(old_document_or_instance, from: MyModel)
+----
+
+`evolve` walks every declared family link between the source version
+and the target (chains compose transitively), never mutates the caller's
+hash, and parses the evolved wire through the hash format. Migration is
+explicit; detection alone *accommodates* (routes), `evolve` *migrates*.
+
+=== Scope and guarantees
+
+* Key-value formats (JSON, YAML, TOML, hash). XML documents keep their
+  structure through the parse complement; XML structural moves are not
+  covered by the wire steps.
+* The source hash is never mutated.
+* Composed chains are the verified path: upcast then serialize yields a
+  current-version document, and re-parse is idempotent.
