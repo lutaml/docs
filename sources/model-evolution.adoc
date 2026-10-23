@@ -1,4 +1,27 @@
-= Model evolution
+= LutaML -- Model Evolution
+:edition: 1.0
+:doctype: standard
+:docnumber: RS 3007
+:published-date: 2025-02-20
+:status: published
+:security: unrestricted
+:committee: LutaML
+:committee-type: technical
+:imagesdir: images
+:mn-document-class: ribose
+:mn-output-extensions: xml,html,pdf,rxl
+:fullname: Ronald Tse
+:surname: Tse
+:givenname: Ronald
+:affiliation: Ribose
+:local-cache-only:
+:data-uri-image:
+:publisher: Ribose Inc.
+:pub-address: 167-169 Great Portland Street + \
+5th Floor + \
+London + \
+W1W 5PF + \
+United Kingdom
 
 == Introduction
 
